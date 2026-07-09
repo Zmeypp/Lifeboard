@@ -1,0 +1,782 @@
+{
+  "generated_at": "2026-07-07T00:00:00",
+  "week_start": "2026-07-06",
+  "week_end": "2026-07-12",
+  "budget": {
+    "max": 35,
+    "estimated": 35.0
+  },
+  "days": [
+    {
+      "date": "2026-07-06",
+      "weekday": "Lundi",
+      "meal": {
+        "title": "Émincé de Poulet aux Poivrons et Riz",
+        "description": "Un plat rapide et savoureux avec du poulet émincé, des poivrons colorés et une sauce tomate légère, servi avec du riz.",
+        "image_prompt": "Photo culinaire réaliste d'un émincé de poulet avec des poivrons rouges et verts, baignant dans une sauce tomate et servi avec du riz blanc, dans une assiette moderne.",
+        "prep_time": 10,
+        "cook_time": 10,
+        "total_time": 20,
+        "estimated_cost": 4.5,
+        "portions": 2,
+        "difficulty": "easy"
+      },
+      "ingredients": [
+        {
+          "name": "Poulet",
+          "quantity": 300,
+          "unit": "g",
+          "from_pantry": false
+        },
+        {
+          "name": "Riz",
+          "quantity": 120,
+          "unit": "g",
+          "from_pantry": false
+        },
+        {
+          "name": "Poivron rouge",
+          "quantity": 0.5,
+          "unit": "pièce",
+          "from_pantry": false
+        },
+        {
+          "name": "Oignon",
+          "quantity": 0.5,
+          "unit": "pièce",
+          "from_pantry": false
+        },
+        {
+          "name": "Coulis de tomate",
+          "quantity": 200,
+          "unit": "g",
+          "from_pantry": false
+        },
+        {
+          "name": "Huile de cuisine",
+          "quantity": 1,
+          "unit": "cuillère à soupe",
+          "from_pantry": true
+        },
+        {
+          "name": "Sel",
+          "quantity": 1,
+          "unit": "pincée",
+          "from_pantry": true
+        },
+        {
+          "name": "Poivre",
+          "quantity": 1,
+          "unit": "pincée",
+          "from_pantry": true
+        }
+      ],
+      "recipe": [
+        {
+          "step": 1,
+          "text": "Faire cuire le riz selon les instructions du paquet. Pendant ce temps, émincer le poulet, hacher l'oignon et couper le poivron en lamelles."
+        },
+        {
+          "step": 2,
+          "text": "Dans une poêle chaude avec l'huile de cuisine, faire revenir l'oignon jusqu'à ce qu'il soit translucide."
+        },
+        {
+          "step": 3,
+          "text": "Ajouter le poulet émincé et faire dorer quelques minutes. Ajouter les lamelles de poivron et faire sauter 3-4 minutes."
+        },
+        {
+          "step": 4,
+          "text": "Incorporer le coulis de tomate, saler et poivrer. Laisser mijoter 5 minutes à feu doux."
+        },
+        {
+          "step": 5,
+          "text": "Servir l'émincé de poulet aux poivrons avec le riz."
+        }
+      ]
+    },
+    {
+      "date": "2026-07-07",
+      "weekday": "Mardi",
+      "meal": {
+        "title": "Saucisses de Volaille et Lentilles Façon Express",
+        "description": "Un plat réconfortant et rapide, avec des saucisses de volaille accompagnées de lentilles en conserve agrémentées de carottes et d'une touche de moutarde.",
+        "image_prompt": "Photo culinaire réaliste de deux saucisses de volaille grillées, servies sur un lit de lentilles cuisinées avec des dés de carottes, dans une assiette rustique.",
+        "prep_time": 5,
+        "cook_time": 10,
+        "total_time": 15,
+        "estimated_cost": 3.5,
+        "portions": 2,
+        "difficulty": "easy"
+      },
+      "ingredients": [
+        {
+          "name": "Saucisses de volaille",
+          "quantity": 2,
+          "unit": "pièce",
+          "from_pantry": false
+        },
+        {
+          "name": "Lentilles en conserve",
+          "quantity": 1,
+          "unit": "boîte",
+          "from_pantry": false
+        },
+        {
+          "name": "Carotte",
+          "quantity": 1,
+          "unit": "pièce",
+          "from_pantry": false
+        },
+        {
+          "name": "Oignon",
+          "quantity": 0.5,
+          "unit": "pièce",
+          "from_pantry": false
+        },
+        {
+          "name": "Moutarde",
+          "quantity": 0.5,
+          "unit": "cuillère à café",
+          "from_pantry": true
+        },
+        {
+          "name": "Huile d'olive",
+          "quantity": 1,
+          "unit": "cuillère à soupe",
+          "from_pantry": true
+        },
+        {
+          "name": "Sel",
+          "quantity": 1,
+          "unit": "pincée",
+          "from_pantry": true
+        },
+        {
+          "name": "Poivre",
+          "quantity": 1,
+          "unit": "pincée",
+          "from_pantry": true
+        }
+      ],
+      "recipe": [
+        {
+          "step": 1,
+          "text": "Égoutter et rincer les lentilles en conserve. Hacher l'oignon et râper la carotte."
+        },
+        {
+          "step": 2,
+          "text": "Dans une casserole, faire revenir l'oignon haché dans l'huile d'olive pendant 2 minutes. Ajouter la carotte râpée et faire sauter 3 minutes."
+        },
+        {
+          "step": 3,
+          "text": "Incorporer les lentilles égouttées, la moutarde, saler et poivrer. Réchauffer doucement pendant 5 minutes."
+        },
+        {
+          "step": 4,
+          "text": "Pendant ce temps, faire dorer les saucisses de volaille dans une poêle chaude pendant 8-10 minutes, en les retournant régulièrement."
+        },
+        {
+          "step": 5,
+          "text": "Servir les saucisses avec les lentilles chaudes."
+        }
+      ]
+    },
+    {
+      "date": "2026-07-08",
+      "weekday": "Mercredi",
+      "meal": {
+        "title": "Boulettes de Bœuf, Sauce Tomate et Semoule",
+        "description": "Des boulettes de bœuf savoureuses mijotées dans une sauce tomate simple, accompagnées de semoule fine, un plat réconfortant et facile à préparer.",
+        "image_prompt": "Photo culinaire réaliste de petites boulettes de bœuf baignant dans une sauce tomate rouge vif, servies avec un monticule de semoule dans une assiette creuse.",
+        "prep_time": 10,
+        "cook_time": 10,
+        "total_time": 20,
+        "estimated_cost": 4.0,
+        "portions": 2,
+        "difficulty": "easy"
+      },
+      "ingredients": [
+        {
+          "name": "Bœuf haché",
+          "quantity": 200,
+          "unit": "g",
+          "from_pantry": false
+        },
+        {
+          "name": "Coulis de tomate",
+          "quantity": 200,
+          "unit": "g",
+          "from_pantry": false
+        },
+        {
+          "name": "Oignon",
+          "quantity": 0.5,
+          "unit": "pièce",
+          "from_pantry": false
+        },
+        {
+          "name": "Ail",
+          "quantity": 1,
+          "unit": "gousse",
+          "from_pantry": false
+        },
+        {
+          "name": "Semoule",
+          "quantity": 120,
+          "unit": "g",
+          "from_pantry": false
+        },
+        {
+          "name": "Huile de cuisine",
+          "quantity": 1,
+          "unit": "cuillère à soupe",
+          "from_pantry": true
+        },
+        {
+          "name": "Sel",
+          "quantity": 1,
+          "unit": "pincée",
+          "from_pantry": true
+        },
+        {
+          "name": "Poivre",
+          "quantity": 1,
+          "unit": "pincée",
+          "from_pantry": true
+        }
+      ],
+      "recipe": [
+        {
+          "step": 1,
+          "text": "Hacher finement l'oignon et l'ail. Dans un saladier, mélanger le bœuf haché avec la moitié de l'oignon et de l'ail, saler et poivrer. Façonner des petites boulettes."
+        },
+        {
+          "step": 2,
+          "text": "Dans une poêle chaude avec l'huile de cuisine, faire dorer les boulettes sur toutes les faces pendant 5 minutes. Retirer les boulettes de la poêle."
+        },
+        {
+          "step": 3,
+          "text": "Dans la même poêle, faire revenir le reste de l'oignon et de l'ail 1 minute. Ajouter le coulis de tomate, saler et poivrer."
+        },
+        {
+          "step": 4,
+          "text": "Remettre les boulettes dans la sauce et laisser mijoter à feu doux pendant 8-10 minutes."
+        },
+        {
+          "step": 5,
+          "text": "Pendant ce temps, préparer la semoule selon les instructions du paquet (généralement 5 minutes avec de l'eau chaude ou du bouillon)."
+        },
+        {
+          "step": 6,
+          "text": "Servir les boulettes de bœuf avec la sauce tomate et la semoule."
+        }
+      ]
+    },
+    {
+      "date": "2026-07-09",
+      "weekday": "Jeudi",
+      "meal": {
+        "title": "Pâtes aux Lardons, Œuf et Parmesan",
+        "description": "Une version simplifiée des pâtes façon carbonara, avec des lardons croustillants, un œuf et du parmesan râpé, un classique rapide et gourmand.",
+        "image_prompt": "Photo culinaire réaliste de pâtes spaghetti enroulées, garnies de lardons fumés dorés, d'un jaune d'œuf crémeux et d'une généreuse pincée de parmesan râpé.",
+        "prep_time": 5,
+        "cook_time": 10,
+        "total_time": 15,
+        "estimated_cost": 3.0,
+        "portions": 2,
+        "difficulty": "easy"
+      },
+      "ingredients": [
+        {
+          "name": "Pâtes",
+          "quantity": 160,
+          "unit": "g",
+          "from_pantry": false
+        },
+        {
+          "name": "Lardons fumés",
+          "quantity": 100,
+          "unit": "g",
+          "from_pantry": false
+        },
+        {
+          "name": "Œuf",
+          "quantity": 1,
+          "unit": "pièce",
+          "from_pantry": false
+        },
+        {
+          "name": "Parmesan râpé",
+          "quantity": 30,
+          "unit": "g",
+          "from_pantry": false
+        },
+        {
+          "name": "Huile d'olive",
+          "quantity": 0.5,
+          "unit": "cuillère à soupe",
+          "from_pantry": true
+        },
+        {
+          "name": "Sel",
+          "quantity": 1,
+          "unit": "pincée",
+          "from_pantry": true
+        },
+        {
+          "name": "Poivre",
+          "quantity": 1,
+          "unit": "pincée",
+          "from_pantry": true
+        }
+      ],
+      "recipe": [
+        {
+          "step": 1,
+          "text": "Faire cuire les pâtes dans un grand volume d'eau bouillante salée selon les instructions du paquet. Garder un peu d'eau de cuisson avant d'égoutter."
+        },
+        {
+          "step": 2,
+          "text": "Pendant ce temps, faire revenir les lardons fumés dans une poêle sans matière grasse jusqu'à ce qu'ils soient croustillants. Réserver."
+        },
+        {
+          "step": 3,
+          "text": "Dans un bol, battre l'œuf avec la moitié du parmesan râpé, du sel et du poivre."
+        },
+        {
+          "step": 4,
+          "text": "Égoutter les pâtes, puis les remettre dans la casserole. Ajouter les lardons, le mélange œuf-parmesan et un filet d'huile d'olive (et un peu d'eau de cuisson si nécessaire pour lier)."
+        },
+        {
+          "step": 5,
+          "text": "Mélanger rapidement hors du feu jusqu'à ce que l'œuf enrobe les pâtes sans cuire complètement. Servir immédiatement avec le reste du parmesan."
+        }
+      ]
+    },
+    {
+      "date": "2026-07-10",
+      "weekday": "Vendredi",
+      "meal": {
+        "title": "Émincé de Poulet Curry Coco et Haricots Verts",
+        "description": "Un plat parfumé et rapide à préparer, avec des morceaux de poulet mijotés dans une sauce crémeuse au lait de coco et à la pâte de curry, accompagné de haricots verts.",
+        "image_prompt": "Photo culinaire réaliste d'un émincé de poulet au curry coco avec des haricots verts croquants, décoré de quelques feuilles de coriandre, servi dans une assiette moderne.",
+        "prep_time": 8,
+        "cook_time": 12,
+        "total_time": 20,
+        "estimated_cost": 4.8,
+        "portions": 2,
+        "difficulty": "easy"
+      },
+      "ingredients": [
+        {
+          "name": "Poulet",
+          "quantity": 250,
+          "unit": "g",
+          "from_pantry": false
+        },
+        {
+          "name": "Lait de coco",
+          "quantity": 200,
+          "unit": "ml",
+          "from_pantry": false
+        },
+        {
+          "name": "Pâte de curry",
+          "quantity": 1,
+          "unit": "cuillère à soupe",
+          "from_pantry": false
+        },
+        {
+          "name": "Haricots verts",
+          "quantity": 200,
+          "unit": "g",
+          "from_pantry": false
+        },
+        {
+          "name": "Oignon",
+          "quantity": 0.5,
+          "unit": "pièce",
+          "from_pantry": false
+        },
+        {
+          "name": "Huile de cuisine",
+          "quantity": 1,
+          "unit": "cuillère à soupe",
+          "from_pantry": true
+        },
+        {
+          "name": "Sel",
+          "quantity": 1,
+          "unit": "pincée",
+          "from_pantry": true
+        },
+        {
+          "name": "Poivre",
+          "quantity": 1,
+          "unit": "pincée",
+          "from_pantry": true
+        }
+      ],
+      "recipe": [
+        {
+          "step": 1,
+          "text": "Émincer le poulet et hacher l'oignon. Faire cuire les haricots verts (surgelés) selon les instructions du paquet."
+        },
+        {
+          "step": 2,
+          "text": "Dans une poêle chaude avec l'huile de cuisine, faire revenir l'oignon haché pendant 2 minutes. Ajouter le poulet émincé et faire dorer 3-4 minutes."
+        },
+        {
+          "step": 3,
+          "text": "Incorporer la pâte de curry et mélanger 1 minute. Ajouter le lait de coco, saler et poivrer. Porter à ébullition puis réduire le feu et laisser mijoter 5 minutes."
+        },
+        {
+          "step": 4,
+          "text": "Ajouter les haricots verts cuits à la sauce curry coco. Mélanger et réchauffer 1-2 minutes."
+        },
+        {
+          "step": 5,
+          "text": "Servir le poulet curry coco avec les haricots verts, éventuellement accompagné du reste de riz de Lundi."
+        }
+      ]
+    },
+    {
+      "date": "2026-07-11",
+      "weekday": "Samedi",
+      "meal": {
+        "title": "Croque Monsieur à la Poêle et Salade Fraîche",
+        "description": "Un croque monsieur préparé rapidement à la poêle pour un côté croustillant, garni de jambon et de fromage, accompagné d'une salade verte et de tomate.",
+        "image_prompt": "Photo culinaire réaliste d'un croque monsieur doré et croustillant coupé en deux, laissant apparaître le jambon et le fromage fondu, servi à côté d'une petite salade verte et de rondelles de tomate.",
+        "prep_time": 10,
+        "cook_time": 5,
+        "total_time": 15,
+        "estimated_cost": 3.4,
+        "portions": 2,
+        "difficulty": "easy"
+      },
+      "ingredients": [
+        {
+          "name": "Pain de mie",
+          "quantity": 4,
+          "unit": "tranches",
+          "from_pantry": false
+        },
+        {
+          "name": "Jambon blanc",
+          "quantity": 2,
+          "unit": "tranches",
+          "from_pantry": false
+        },
+        {
+          "name": "Fromage râpé",
+          "quantity": 50,
+          "unit": "g",
+          "from_pantry": false
+        },
+        {
+          "name": "Salade verte",
+          "quantity": 0.5,
+          "unit": "pièce",
+          "from_pantry": false
+        },
+        {
+          "name": "Tomate",
+          "quantity": 1,
+          "unit": "pièce",
+          "from_pantry": false
+        },
+        {
+          "name": "Huile d'olive",
+          "quantity": 1,
+          "unit": "cuillère à soupe",
+          "from_pantry": true
+        },
+        {
+          "name": "Moutarde",
+          "quantity": 0.5,
+          "unit": "cuillère à café",
+          "from_pantry": true
+        },
+        {
+          "name": "Sel",
+          "quantity": 1,
+          "unit": "pincée",
+          "from_pantry": true
+        },
+        {
+          "name": "Poivre",
+          "quantity": 1,
+          "unit": "pincée",
+          "from_pantry": true
+        }
+      ],
+      "recipe": [
+        {
+          "step": 1,
+          "text": "Étaler une fine couche de moutarde sur deux tranches de pain de mie. Poser une tranche de jambon, puis du fromage râpé sur chaque tranche."
+        },
+        {
+          "step": 2,
+          "text": "Refermer avec les deux autres tranches de pain de mie."
+        },
+        {
+          "step": 3,
+          "text": "Faire chauffer un filet d'huile de cuisine dans une poêle. Faire dorer les croque-monsieur 2-3 minutes de chaque côté, jusqu'à ce qu'ils soient bien dorés et que le fromage soit fondu."
+        },
+        {
+          "step": 4,
+          "text": "Laver et essorer la salade verte. Couper la tomate en rondelles."
+        },
+        {
+          "step": 5,
+          "text": "Servir le croque monsieur chaud avec la salade verte et les rondelles de tomate assaisonnées d'huile d'olive, sel et poivre."
+        }
+      ]
+    },
+    {
+      "date": "2026-07-12",
+      "weekday": "Dimanche",
+      "meal": {
+        "title": "Omelette Complète au Jambon et Fromage Râpé",
+        "description": "Une omelette rapide et facile à préparer, garnie de jambon et de fromage râpé, accompagnée d'une salade fraîche pour un dîner léger.",
+        "image_prompt": "Photo culinaire réaliste d'une omelette dorée et moelleuse garnie de petits morceaux de jambon et de fromage fondu, pliée en deux et servie avec une salade verte fraîche sur le côté.",
+        "prep_time": 5,
+        "cook_time": 5,
+        "total_time": 10,
+        "estimated_cost": 1.8,
+        "portions": 2,
+        "difficulty": "easy"
+      },
+      "ingredients": [
+        {
+          "name": "Œuf",
+          "quantity": 2,
+          "unit": "pièces",
+          "from_pantry": false
+        },
+        {
+          "name": "Jambon blanc",
+          "quantity": 2,
+          "unit": "tranches",
+          "from_pantry": false
+        },
+        {
+          "name": "Fromage râpé",
+          "quantity": 30,
+          "unit": "g",
+          "from_pantry": false
+        },
+        {
+          "name": "Salade verte",
+          "quantity": 0.5,
+          "unit": "pièce",
+          "from_pantry": false
+        },
+        {
+          "name": "Tomate",
+          "quantity": 1,
+          "unit": "pièce",
+          "from_pantry": false
+        },
+        {
+          "name": "Huile de cuisine",
+          "quantity": 0.5,
+          "unit": "cuillère à soupe",
+          "from_pantry": true
+        },
+        {
+          "name": "Huile d'olive",
+          "quantity": 1,
+          "unit": "cuillère à soupe",
+          "from_pantry": true
+        },
+        {
+          "name": "Sel",
+          "quantity": 1,
+          "unit": "pincée",
+          "from_pantry": true
+        },
+        {
+          "name": "Poivre",
+          "quantity": 1,
+          "unit": "pincée",
+          "from_pantry": true
+        }
+      ],
+      "recipe": [
+        {
+          "step": 1,
+          "text": "Couper le jambon blanc en petits dés. Dans un bol, battre les œufs avec le sel et le poivre. Ajouter les dés de jambon et le fromage râpé."
+        },
+        {
+          "step": 2,
+          "text": "Faire chauffer l'huile de cuisine dans une poêle antiadhésive à feu moyen. Verser le mélange aux œufs."
+        },
+        {
+          "step": 3,
+          "text": "Laisser cuire l'omelette quelques minutes sans remuer, puis ramener les bords vers le centre à l'aide d'une spatule. Replier l'omelette en deux quand elle est à votre goût (baveuse ou bien cuite)."
+        },
+        {
+          "step": 4,
+          "text": "Pendant la cuisson de l'omelette, laver la salade verte et couper la tomate restante en rondelles."
+        },
+        {
+          "step": 5,
+          "text": "Servir l'omelette chaude avec la salade verte et les rondelles de tomate assaisonnées d'huile d'olive, sel et poivre."
+        }
+      ]
+    }
+  ],
+  "shopping_list": {
+    "vegetables": [
+      {
+        "name": "Oignon",
+        "quantity": 3,
+        "unit": "pièces",
+        "estimated_cost": 0.6
+      },
+      {
+        "name": "Poivron rouge",
+        "quantity": 1,
+        "unit": "pièce",
+        "estimated_cost": 1.5
+      },
+      {
+        "name": "Carotte",
+        "quantity": 1,
+        "unit": "pièce",
+        "estimated_cost": 0.3
+      },
+      {
+        "name": "Ail",
+        "quantity": 1,
+        "unit": "tête",
+        "estimated_cost": 0.5
+      },
+      {
+        "name": "Salade verte",
+        "quantity": 1,
+        "unit": "pièce",
+        "estimated_cost": 1.0
+      },
+      {
+        "name": "Tomate",
+        "quantity": 2,
+        "unit": "pièces",
+        "estimated_cost": 1.0
+      }
+    ],
+    "meat": [
+      {
+        "name": "Poulet",
+        "quantity": 600,
+        "unit": "g",
+        "estimated_cost": 5.8
+      },
+      {
+        "name": "Saucisses de volaille",
+        "quantity": 4,
+        "unit": "pièces",
+        "estimated_cost": 2.5
+      },
+      {
+        "name": "Bœuf haché",
+        "quantity": 250,
+        "unit": "g",
+        "estimated_cost": 3.0
+      },
+      {
+        "name": "Lardons fumés",
+        "quantity": 200,
+        "unit": "g",
+        "estimated_cost": 2.0
+      },
+      {
+        "name": "Jambon blanc",
+        "quantity": 4,
+        "unit": "tranches",
+        "estimated_cost": 1.8
+      }
+    ],
+    "dairy": [
+      {
+        "name": "Œuf",
+        "quantity": 6,
+        "unit": "pièces",
+        "estimated_cost": 1.5
+      },
+      {
+        "name": "Parmesan râpé",
+        "quantity": 60,
+        "unit": "g",
+        "estimated_cost": 1.8
+      },
+      {
+        "name": "Fromage râpé",
+        "quantity": 150,
+        "unit": "g",
+        "estimated_cost": 1.5
+      }
+    ],
+    "grocery": [
+      {
+        "name": "Riz",
+        "quantity": 500,
+        "unit": "g",
+        "estimated_cost": 1.2
+      },
+      {
+        "name": "Coulis de tomate",
+        "quantity": 500,
+        "unit": "g",
+        "estimated_cost": 1.0
+      },
+      {
+        "name": "Lentilles en conserve",
+        "quantity": 1,
+        "unit": "boîte",
+        "estimated_cost": 0.8
+      },
+      {
+        "name": "Semoule",
+        "quantity": 500,
+        "unit": "g",
+        "estimated_cost": 0.8
+      },
+      {
+        "name": "Pâtes",
+        "quantity": 500,
+        "unit": "g",
+        "estimated_cost": 0.9
+      },
+      {
+        "name": "Lait de coco",
+        "quantity": 400,
+        "unit": "ml",
+        "estimated_cost": 1.2
+      },
+      {
+        "name": "Pain de mie",
+        "quantity": 1,
+        "unit": "paquet",
+        "estimated_cost": 1.0
+      }
+    ],
+    "frozen": [
+      {
+        "name": "Haricots verts",
+        "quantity": 450,
+        "unit": "g",
+        "estimated_cost": 1.5
+      }
+    ],
+    "seasoning": [
+      {
+        "name": "Pâte de curry",
+        "quantity": 1,
+        "unit": "pot",
+        "estimated_cost": 1.8
+      }
+    ]
+  }
+}
