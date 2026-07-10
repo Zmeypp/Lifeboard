@@ -1,22 +1,21 @@
 "use client";
 
-import { motion } from "framer-motion";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { motion, type HTMLMotionProps } from "framer-motion";
+import type { ReactNode } from "react";
 
-type AnimatedButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+type AnimatedButtonProps = HTMLMotionProps<"button"> & {
   children: ReactNode;
 };
 
 export default function AnimatedButton({
   children,
   className = "",
+  type = "button",
   ...props
 }: AnimatedButtonProps) {
   return (
     <motion.button
-      whileHover={{ scale: 1.03 }}
-      whileTap={{ scale: 0.95 }}
-      transition={{ type: "spring", stiffness: 420, damping: 24 }}
+      type={type}
       className={className}
       {...props}
     >
