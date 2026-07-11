@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -15,6 +16,8 @@ type GenerationStatus = {
   mealPlanMax: number;
   images: number;
   imagesMax: number;
+  status?: "idle" | "running" | "success" | "error";
+  error?: string | null;
 };
 
 type Props = {
@@ -33,6 +36,21 @@ export default function WeekMealsPage({
 
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [isRequestingGeneration, setIsRequestingGeneration] = useState(false);
+
+  const [showGenerationErrorPopup, setShowGenerationErrorPopup] =
+  useState(false);
+
+  useEffect(() => {
+    if (
+        generationStatus?.status === "error" &&
+        generationStatus.error
+    ) {
+        setShowGenerationErrorPopup(true);
+    }
+    }, [
+    generationStatus?.status,
+    generationStatus?.error,
+  ]);
 
   const dragState = useRef({
     active: false,
@@ -428,6 +446,75 @@ export default function WeekMealsPage({
           </div>
         </div>
       )}
+
+
+      {showGenerationErrorPopup &&
+  generationStatus?.status === "error" && (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-6 backdrop-blur-sm">
+      <div className="w-full max-w-xl rounded-2xl border border-red-400/30 bg-[#0b1623] p-8 shadow-2xl">
+        <div className="flex items-start justify-between gap-5">
+          <div>
+            <div className="mb-3 text-5xl">⚠️</div>
+
+            <h2 className="text-2xl font-bold text-red-300">
+              Génération interrompue
+            </h2>
+          </div>
+
+          <button
+            type="button"
+            onPointerUp={(event) => {
+              event.stopPropagation();
+              setShowGenerationErrorPopup(false);
+            }}
+            className="rounded-lg p-2 active:bg-white/15"
+            style={{ touchAction: "none" }}
+          >
+            <X />
+          </button>
+        </div>
+
+        <p className="mt-5 text-lg text-slate-300">
+          La nouvelle semaine n’a pas été publiée.
+          L’ancien planning reste affiché.
+        </p>
+
+        <div className="mt-5 max-h-48 overflow-y-auto rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-red-200">
+          {generationStatus.error ??
+            "Une erreur inconnue est survenue."}
+        </div>
+
+        <div className="mt-7 flex gap-4">
+          <button
+            type="button"
+            onPointerUp={(event) => {
+              event.stopPropagation();
+              setShowGenerationErrorPopup(false);
+            }}
+            className="flex-1 rounded-xl border border-white/10 bg-white/5 px-5 py-4 font-bold active:bg-white/10"
+            style={{ touchAction: "none" }}
+          >
+            Fermer
+          </button>
+
+          <button
+            type="button"
+            disabled={isRequestingGeneration}
+            onPointerUp={(event) => {
+              event.stopPropagation();
+              setShowGenerationErrorPopup(false);
+              void generateNewWeek();
+            }}
+            className="flex-1 rounded-xl bg-purple-600 px-5 py-4 font-bold active:bg-purple-700 disabled:opacity-50"
+            style={{ touchAction: "none" }}
+          >
+            Réessayer
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
+
     </div>
   );
 }

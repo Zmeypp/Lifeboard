@@ -199,45 +199,69 @@ prompt = (
 print("Semaine générée :", week_start, "→", week_end)
 print("Date de génération :", generated_at)
 
-def generate_with_fallback(prompt: str, max_retries_per_model: int = 2):
+def generate_with_fallback(
+    prompt: str,
+    max_retries_per_model: int = 4,
+):
     last_error = None
 
     for model in MODELS:
         for attempt in range(max_retries_per_model + 1):
             try:
-                print(f"Essai avec {model}...")
+                print(
+                    f"Essai avec {model} "
+                    f"({attempt + 1}/{max_retries_per_model + 1})...",
+                    flush=True,
+                )
+
                 response = client.models.generate_content(
                     model=model,
                     contents=prompt,
                     config={
-                        "response_mime_type": "application/json"
-                    }
+                        "response_mime_type": "application/json",
+                    },
                 )
+
                 return response.text
 
-            except errors.APIError as e:
-                last_error = e
-                code = getattr(e, "code", None)
-                message = getattr(e, "message", str(e))
+            except errors.APIError as error:
+                last_error = error
+                code = getattr(error, "code", None)
+                message = getattr(error, "message", str(error))
 
-                print(f"Erreur avec {model} : {code} - {message}")
+                print(
+                    f"Erreur avec {model} : {code} - {message}",
+                    flush=True,
+                )
 
-                # Erreur non temporaire : inutile de tester les autres modèles
                 if code not in RETRYABLE_CODES:
                     raise
 
-                # Retry sur le même modèle avant de fallback
                 if attempt < max_retries_per_model:
-                    wait = 2 ** (attempt + 1)
-                    print(f"Retry dans {wait}s...")
+                    wait = 65 if code == 429 else 2 ** (attempt + 1)
+
+                    print(
+                        f"Nouvelle tentative dans {wait} secondes...",
+                        flush=True,
+                    )
+
                     time.sleep(wait)
                 else:
-                    print(f"Fallback vers le modèle suivant...")
+                    print(
+                        "Passage au modèle suivant...",
+                        flush=True,
+                    )
 
-    raise RuntimeError(f"Tous les modèles ont échoué. Dernière erreur : {last_error}")
+    raise RuntimeError(
+        "Tous les modèles ont échoué. "
+        f"Dernière erreur : {last_error}"
+    )
 
 try:
-    result = generate_with_fallback(prompt)
+    result = generate_with_fallback(
+        prompt,
+        max_retries_per_model=4,
+    )
 
     # Nettoyage des balises Markdown si Gemini en ajoute
     result = result.strip()

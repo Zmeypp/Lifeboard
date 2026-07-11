@@ -1,7 +1,9 @@
 {
   "isGenerating": false,
+  "status": "success",
   "mealPlan": 1,
   "mealPlanMax": 1,
   "images": 7,
-  "imagesMax": 7
+  "imagesMax": 7,
+  "error": null
 }

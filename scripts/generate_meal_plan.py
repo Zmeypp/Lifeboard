@@ -52,7 +52,9 @@ def write_status(
         "error": error,
     }
 
-    temporary_status_file = STATUS_FILE.with_suffix(".tmp.json")
+    temporary_status_file = STATUS_FILE.with_suffix(
+        ".tmp.json"
+    )
 
     temporary_status_file.write_text(
         json.dumps(
