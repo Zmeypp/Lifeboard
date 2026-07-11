@@ -3,6 +3,8 @@ from google import genai
 from google.genai import errors
 import json
 from pathlib import Path
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 client = genai.Client(api_key="AQ.Ab8RN6KH6UEZktI8x6R40Zh6Z1mEYSfse1joI_PnhryXk9yWJQ")
 
@@ -14,6 +16,16 @@ MODELS = [
 
 RETRYABLE_CODES = {429, 500, 503, 504}
 
+now = datetime.now(ZoneInfo("Europe/Paris"))
+
+week_start_date = now.date() - timedelta(days=now.weekday())
+week_end_date = week_start_date + timedelta(days=6)
+
+week_start = week_start_date.isoformat()
+week_end = week_end_date.isoformat()
+
+generated_at = now.replace(microsecond=0).isoformat()
+
 prompt = """
 Tu es le backend de l'application LifeBoard.
 
@@ -24,8 +36,9 @@ Génère un planning de 7 dîners pour une personne.
 
 Paramètres d'entrée :
 
-* week_start = 2026-07-06
-* generated_at = 2026-07-07T00:00:00
+* week_start = __WEEK_START__
+* week_end = __WEEK_END__
+* generated_at = __GENERATED_AT__
 * pantry_items = ["Sel", "Poivre", "Huile de cuisine", "Huile d'olive", "Moutarde"]
 
 Contraintes principales :
@@ -175,6 +188,16 @@ Avant de répondre, vérifie mentalement :
 * Tous les ingrédients hors pantry sont présents dans shopping_list avec le même nom.
 
 """
+
+prompt = (
+    prompt
+    .replace("__WEEK_START__", week_start)
+    .replace("__WEEK_END__", week_end)
+    .replace("__GENERATED_AT__", generated_at)
+)
+
+print("Semaine générée :", week_start, "→", week_end)
+print("Date de génération :", generated_at)
 
 def generate_with_fallback(prompt: str, max_retries_per_model: int = 2):
     last_error = None
