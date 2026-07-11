@@ -224,7 +224,15 @@ def publish_generation(
         exist_ok=True,
     )
 
-    # Publication atomique de chaque image.
+    # Supprime les anciennes images seulement maintenant,
+    # lorsque les 7 nouvelles images sont prêtes et validées.
+    for old_image in PUBLIC_IMAGES_DIR.iterdir():
+        if old_image.is_file():
+            old_image.unlink()
+        elif old_image.is_dir():
+            shutil.rmtree(old_image)
+
+    # Publication des 7 nouvelles images.
     for image in generated_images:
         temporary_image = TEMP_IMAGES_DIR / image.name
         public_image = PUBLIC_IMAGES_DIR / image.name
@@ -235,8 +243,6 @@ def publish_generation(
         )
 
     # Le JSON est remplacé en dernier.
-    # Tant que cette ligne n'est pas exécutée,
-    # LifeBoard continue d'utiliser l'ancien planning.
     os.replace(
         TEMP_PUBLIC_JSON,
         PUBLIC_JSON,
