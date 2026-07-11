@@ -208,21 +208,38 @@ export default function OperationForm({
           Montant
         </label>
 
-        <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4">
-          <input
-            value={amount}
-            onChange={(event) =>
-              handleAmountChange(event.target.value)
-            }
-            type="text"
-            inputMode="decimal"
-            pattern="[0-9]*[.,]?[0-9]*"
-            placeholder="42,50"
-            autoComplete="off"
-            className="w-full bg-transparent py-3 text-white outline-none"
-          />
+        <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-2">
+            <input
+                value={amount}
+                onChange={(event) =>
+                handleAmountChange(event.target.value)
+                }
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9]*[.,]?[0-9]*"
+                placeholder="42,50"
+                autoComplete="off"
+                className="w-full bg-transparent px-2 py-3 text-white outline-none"
+            />
 
-          <span className="text-slate-400">€</span>
+            <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                if (!amount.includes(",")) {
+                    setAmount((currentAmount) =>
+                    currentAmount.length === 0
+                        ? "0,"
+                        : `${currentAmount},`
+                    );
+                }
+                }}
+                className="mr-2 rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-xl font-bold text-white active:bg-white/20"
+            >
+                ,
+            </button>
+
+            <span className="pr-2 text-slate-400">€</span>
         </div>
       </div>
 
