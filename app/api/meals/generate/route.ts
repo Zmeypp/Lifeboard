@@ -16,7 +16,7 @@ export async function POST() {
 
   const scriptPath = path.join(process.cwd(), "scripts", "generate_meal_plan.py");
 
-  const processPython = spawn("py", [scriptPath], {
+  const processPython = spawn("python3", [scriptPath], {
     cwd: process.cwd(),
     shell: false,
   });
