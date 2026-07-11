@@ -44,12 +44,13 @@ export default function TodayMealPage({
   const imageName = `${day.date}_${slugify(day.meal.title)}.jpg`;
   console.log(imageName);
 
-  const imageVersion = encodeURIComponent(
-    mealPlan.generated_at ?? "unknown",
-  );
+const imageVersion = encodeURIComponent(
+  mealPlan.generated_at ?? "unknown",
+);
 
-  const imageUrl =
-    `/images/${encodeURIComponent(imageName)}?v=${imageVersion}`;
+const imageUrl =
+  `/api/meal-images/${encodeURIComponent(imageName)}` +
+  `?v=${imageVersion}`;
 
           if (generationStatus?.isGenerating) {
   return (
