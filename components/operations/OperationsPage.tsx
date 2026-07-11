@@ -34,10 +34,27 @@ export default function OperationsPage({
     return matchesSearch && matchesFilter;
   });
 
+  function sanitizeDecimalValue(value: string) {
+    return value
+      .replace(".", ",")
+      .replace(/[^\d,]/g, "")
+      .replace(/(,.*),/g, "$1");
+  }
+
+  function parseDecimalValue(value: string) {
+    return Number(value.replace(",", "."));
+  }
+
+  function handleEditAmountChange(value: string) {
+    setEditAmount(sanitizeDecimalValue(value));
+  }
+
   function startEdit(operation: Operation) {
     setEditingId(operation.id);
     setEditTitle(operation.title);
-    setEditAmount(String(Math.abs(operation.amount)));
+    setEditAmount(
+      String(Math.abs(operation.amount)).replace(".", ","),
+    );
   }
 
   function cancelEdit() {
@@ -47,9 +64,15 @@ export default function OperationsPage({
   }
 
   function saveEdit(operation: Operation) {
-    const parsedAmount = Number(editAmount);
+    const parsedAmount = parseDecimalValue(editAmount);
 
-    if (!parsedAmount || !editTitle.trim()) return;
+    if (
+      !Number.isFinite(parsedAmount) ||
+      parsedAmount <= 0 ||
+      !editTitle.trim()
+    ) {
+      return;
+    }
 
     const sign = operation.amount >= 0 ? 1 : -1;
 
@@ -57,19 +80,19 @@ export default function OperationsPage({
       Object.entries(operation.accountImpact).map(([key, value]) => [
         key,
         value >= 0 ? parsedAmount : -parsedAmount,
-      ])
+      ]),
     ) as Operation["accountImpact"];
 
     const updatedBudgetImpact = Object.fromEntries(
       Object.entries(operation.budgetImpact).map(([key, value]) => [
         key,
         value >= 0 ? parsedAmount : -parsedAmount,
-      ])
+      ]),
     ) as Operation["budgetImpact"];
 
     onUpdateOperation({
       ...operation,
-      title: editTitle,
+      title: editTitle.trim(),
       amount: parsedAmount * sign,
       accountImpact: updatedAccountImpact,
       budgetImpact: updatedBudgetImpact,
@@ -83,6 +106,7 @@ export default function OperationsPage({
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold">Opérations</h2>
+
           <p className="text-slate-400">
             Historique complet de tes dépenses, revenus et transferts.
           </p>
@@ -92,25 +116,30 @@ export default function OperationsPage({
       <div className="mb-5 flex gap-4">
         <input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(event) => setSearch(event.target.value)}
           placeholder="Rechercher une opération..."
           className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none"
         />
 
         <select
           value={filter}
-          onChange={(e) => setFilter(e.target.value as Filter)}
+          onChange={(event) =>
+            setFilter(event.target.value as Filter)
+          }
           className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none"
         >
           <option className="bg-[#0b1623]" value="all">
             Toutes
           </option>
+
           <option className="bg-[#0b1623]" value="expense">
             Dépenses
           </option>
+
           <option className="bg-[#0b1623]" value="income">
             Revenus
           </option>
+
           <option className="bg-[#0b1623]" value="transfer">
             Transferts
           </option>
@@ -135,23 +164,40 @@ export default function OperationsPage({
                   <div className="flex flex-1 gap-3">
                     <input
                       value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
+                      onChange={(event) =>
+                        setEditTitle(event.target.value)
+                      }
                       className="flex-1 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-white outline-none"
                     />
 
                     <div className="flex items-center rounded-lg border border-white/10 bg-white/[0.04] px-3">
                       <input
                         value={editAmount}
-                        onChange={(e) => setEditAmount(e.target.value)}
-                        type="number"
+                        onChange={(event) =>
+                          handleEditAmountChange(event.target.value)
+                        }
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            saveEdit(operation);
+                          }
+                        }}
+                        type="text"
+                        inputMode="decimal"
+                        pattern="[0-9]*[.,]?[0-9]*"
+                        autoComplete="off"
+                        placeholder="0,00"
                         className="w-28 bg-transparent py-2 text-white outline-none"
                       />
+
                       <span className="text-slate-400">€</span>
                     </div>
                   </div>
                 ) : (
                   <div>
-                    <p className="font-semibold text-white">{operation.title}</p>
+                    <p className="font-semibold text-white">
+                      {operation.title}
+                    </p>
+
                     <p className="text-sm text-slate-400">
                       {operation.date} · {operation.category}
                     </p>
@@ -161,7 +207,9 @@ export default function OperationsPage({
 
               <div className="flex items-center gap-4">
                 {!isEditing && (
-                  <p className={`text-xl font-bold ${operation.color}`}>
+                  <p
+                    className={`text-xl font-bold ${operation.color}`}
+                  >
                     {operation.amount > 0 ? "+" : ""}
                     {operation.amount.toLocaleString("fr-FR")} €
                   </p>
@@ -170,6 +218,7 @@ export default function OperationsPage({
                 {isEditing ? (
                   <>
                     <AnimatedButton
+                      type="button"
                       onClick={() => saveEdit(operation)}
                       className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400 hover:bg-emerald-500/20"
                     >
@@ -177,6 +226,7 @@ export default function OperationsPage({
                     </AnimatedButton>
 
                     <AnimatedButton
+                      type="button"
                       onClick={cancelEdit}
                       className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300 hover:bg-white/10"
                     >
@@ -186,6 +236,7 @@ export default function OperationsPage({
                 ) : (
                   <>
                     <AnimatedButton
+                      type="button"
                       onClick={() => startEdit(operation)}
                       className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-400 hover:bg-blue-500/20"
                     >
@@ -193,7 +244,10 @@ export default function OperationsPage({
                     </AnimatedButton>
 
                     <AnimatedButton
-                      onClick={() => onDeleteOperation(operation.id)}
+                      type="button"
+                      onClick={() =>
+                        onDeleteOperation(operation.id)
+                      }
                       className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400 hover:bg-red-500/20"
                     >
                       Supprimer
