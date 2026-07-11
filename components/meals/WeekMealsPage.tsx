@@ -61,158 +61,118 @@ export default function WeekMealsPage({
   
 
   return (
-  <div className="flex flex-1 min-h-0 overflow-hidden">
-
-    <div className="grid flex-1 min-h-0 grid-cols-2 gap-6 overflow-y-auto pr-2">
-
-      {/* Planning */}
-
+  <div className="flex min-h-0 flex-1 overflow-hidden">
+    <div
+      className="
+        grid min-h-0 flex-1 grid-cols-2 gap-6 overflow-y-auto pr-2
+        overscroll-contain touch-pan-y
+      "
+      style={{
+        WebkitOverflowScrolling: "touch",
+        touchAction: "pan-y",
+      }}
+    >
       <div className="rounded-2xl border border-white/10 bg-[#0b1623] p-6">
-
-        <h2 className="mb-6 text-3xl font-bold">
-          📅 Planning
-        </h2>
+        <h2 className="mb-6 text-3xl font-bold">📅 Planning</h2>
 
         <div className="space-y-3">
-
           {mealPlan.days.map((day) => (
-
             <div
               key={day.date}
               className="rounded-xl border border-white/10 bg-white/5 p-4"
             >
-
-              <div className="font-bold">
-                {day.weekday}
-              </div>
+              <div className="font-bold">{day.weekday}</div>
 
               <div className="text-slate-300">
                 {day.meal.title}
               </div>
 
               <div className="mt-2 text-sm text-slate-500">
-                {day.meal.total_time} min • {day.meal.estimated_cost.toFixed(2)} €
+                {day.meal.total_time} min •{" "}
+                {day.meal.estimated_cost.toFixed(2)} €
               </div>
-
             </div>
-
           ))}
-
         </div>
-
       </div>
-
-      {/* Courses */}
 
       <div className="rounded-2xl border border-white/10 bg-[#0b1623] p-6">
-
         <div className="mb-6 flex items-center justify-between">
-  <h2 className="text-3xl font-bold">
-    🛒 Courses
-  </h2>
+          <h2 className="text-3xl font-bold">🛒 Courses</h2>
 
-  <AnimatedButton
-    onClick={() => setShowQr(true)}
-    className="rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10"
-  >
-    <QrCode size={24} />
-  </AnimatedButton>
-</div>
-
-        <div className="space-y-6">
-
-          {Object.entries(mealPlan.shopping_list).map(([category, items]) => (
-
-            <div key={category}>
-
-              <h3 className="mb-3 text-lg font-bold capitalize">
-                {category}
-              </h3>
-
-              <div className="space-y-2">
-
-                {items.map((item) => (
-
-                  <div
-                    key={item.name}
-                    className="flex justify-between rounded-lg bg-white/5 px-3 py-2"
-                  >
-
-                    <span>{item.name}</span>
-
-                    <span className="text-slate-400">
-                      {item.quantity} {item.unit}
-                    </span>
-
-                  </div>
-
-                ))}
-
-              </div>
-
-            </div>
-
-          ))}
-
+          <button
+            type="button"
+            onClick={() => setShowQr(true)}
+            className="
+              rounded-xl border border-white/10 bg-white/5 p-3
+              hover:bg-white/10 touch-manipulation
+            "
+            style={{ touchAction: "manipulation" }}
+          >
+            <QrCode size={24} />
+          </button>
         </div>
 
-        <AnimatedButton
-  disabled={generationStatus?.isGenerating}
-  onClick={async () => {
-    await fetch("/api/meals/generate", {
-      method: "POST",
-    });
-  }}
-  className="mt-8 w-full rounded-xl bg-purple-600 py-4 font-bold disabled:cursor-not-allowed disabled:opacity-50"
->
-  {generationStatus?.isGenerating
-    ? "Génération en cours..."
-    : "Générer une nouvelle semaine"}
-</AnimatedButton>
+        <div className="space-y-6">
+          {Object.entries(mealPlan.shopping_list).map(
+            ([category, items]) => (
+              <div key={category}>
+                <h3 className="mb-3 text-lg font-bold capitalize">
+                  {category}
+                </h3>
 
-      </div>
+                <div className="space-y-2">
+                  {items.map((item) => (
+                    <div
+                      key={item.name}
+                      className="flex justify-between rounded-lg bg-white/5 px-3 py-2"
+                    >
+                      <span>{item.name}</span>
 
-    </div>
+                      <span className="text-slate-400">
+                        {item.quantity} {item.unit}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ),
+          )}
+        </div>
 
-    {showQr && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+        <button
+          type="button"
+          disabled={generationStatus?.isGenerating}
+          onClick={async () => {
+            console.log("Génération demandée");
 
-    <div className="w-[430px] rounded-2xl border border-white/10 bg-[#0b1623] p-8">
+            try {
+              const response = await fetch("/api/meals/generate", {
+                method: "POST",
+              });
 
-      <div className="mb-6 flex items-center justify-between">
-
-        <h2 className="text-2xl font-bold">
-          QR Code
-        </h2>
-
-        <AnimatedButton
-          onClick={() => setShowQr(false)}
-          className="rounded-lg p-2 hover:bg-white/10"
+              if (!response.ok) {
+                throw new Error(`Erreur HTTP ${response.status}`);
+              }
+            } catch (error) {
+              console.error(error);
+            }
+          }}
+          className="
+            mt-8 w-full rounded-xl bg-purple-600 py-4 font-bold
+            disabled:cursor-not-allowed disabled:opacity-50
+            touch-manipulation
+          "
+          style={{ touchAction: "manipulation" }}
         >
-          <X />
-        </AnimatedButton>
-
+          {generationStatus?.isGenerating
+            ? "Génération en cours..."
+            : "Générer une nouvelle semaine"}
+        </button>
       </div>
-
-      <div className="rounded-xl bg-white p-6">
-
-        <QRCode
-          value={qrData}
-          size={320}
-          style={{ width: "100%", height: "auto" }}
-        />
-
-      </div>
-
-      <p className="mt-6 text-center text-sm text-slate-400">
-        Ce QR Code contient la liste de courses de toute la semaine.
-      </p>
-
     </div>
 
-  </div>
-)}
-
+    {/* Modal QR code */}
   </div>
 );
 
