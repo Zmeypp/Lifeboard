@@ -23,7 +23,7 @@ STATUS_FILE = ROOT_DIR / "scripts" / "generation_status.json"
 MAX_WORKERS = 2
 MAX_ATTEMPTS = 3
 
-API_KEY = os.environ.get("sk_nlS9tHNY9NY0TNQSS6sLcpKmsE19Tund")
+API_KEY = "sk_nlS9tHNY9NY0TNQSS6sLcpKmsE19Tund"
 
 if not API_KEY:
     raise RuntimeError(
