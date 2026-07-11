@@ -5,35 +5,42 @@ import { useEffect, useRef, useState } from "react";
 export default function usePresentationMode() {
   const [inactiveSeconds, setInactiveSeconds] = useState(0);
 
-  const timer = useRef<NodeJS.Timeout | null>(null);
+  const timer = useRef<number | null>(null);
 
   useEffect(() => {
     function resetTimer() {
       setInactiveSeconds(0);
     }
 
-    window.addEventListener("mousemove", resetTimer);
-    window.addEventListener("keydown", resetTimer);
-    window.addEventListener("click", resetTimer);
-    window.addEventListener("wheel", resetTimer);
+    const events: Array<keyof WindowEventMap> = [
+      "pointerdown",
+      "keydown",
+      "wheel",
+    ];
 
-    timer.current = setInterval(() => {
+    events.forEach((event) => {
+      window.addEventListener(event, resetTimer, { passive: true });
+    });
+
+    timer.current = window.setInterval(() => {
       setInactiveSeconds((current) => current + 1);
     }, 1000);
 
     return () => {
-      if (timer.current) clearInterval(timer.current);
+      if (timer.current !== null) {
+        window.clearInterval(timer.current);
+      }
 
-      window.removeEventListener("mousemove", resetTimer);
-      window.removeEventListener("keydown", resetTimer);
-      window.removeEventListener("click", resetTimer);
-      window.removeEventListener("wheel", resetTimer);
+      events.forEach((event) => {
+        window.removeEventListener(event, resetTimer);
+      });
     };
   }, []);
 
   return {
     inactiveSeconds,
     isPresentation: inactiveSeconds >= 120,
-    shouldReturnHome: inactiveSeconds >= 30,
+    shouldReturnHome:
+      inactiveSeconds >= 30 && inactiveSeconds < 120,
   };
 }

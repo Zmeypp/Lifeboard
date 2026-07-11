@@ -113,33 +113,31 @@ export default function DashboardLayout() {
 
   useEffect(() => {
     if (presentationDisabled) return;
+    if (isPresentation) return;
 
     if (shouldReturnHome && activePage !== "overview") {
         setActivePage("overview");
     }
-  }, [shouldReturnHome, activePage, presentationDisabled]);
+    }, [
+    shouldReturnHome,
+    activePage,
+    presentationDisabled,
+    isPresentation,
+  ]);
 
  useEffect(() => {
-  if (presentationDisabled) return;
-  if (!isPresentation) return;
+    if (presentationDisabled || !isPresentation) return;
 
-  if (activePage === "overview") {
     setActivePage("statistics");
-  }
-}, [isPresentation, presentationDisabled]);
 
-useEffect(() => {
-  if (presentationDisabled) return;
-  if (!isPresentation) return;
+    const slideshow = window.setInterval(() => {
+        setActivePage((current) =>
+        current === "overview" ? "statistics" : "overview"
+        );
+    }, 15000);
 
-  const slideshow = setInterval(() => {
-    setActivePage((current) =>
-      current === "overview" ? "statistics" : "overview"
-    );
-  }, 15000);
-
-  return () => clearInterval(slideshow);
-}, [isPresentation, presentationDisabled]);
+    return () => window.clearInterval(slideshow);
+  }, [isPresentation, presentationDisabled]);
 
   useEffect(() => {
     const savedOperations = localStorage.getItem("lifeboard_operations");
