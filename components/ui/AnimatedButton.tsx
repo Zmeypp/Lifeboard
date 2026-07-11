@@ -11,12 +11,18 @@ export default function AnimatedButton({
   children,
   className = "",
   type = "button",
+  style,
   ...props
 }: AnimatedButtonProps) {
   return (
     <motion.button
       type={type}
-      className={className}
+      className={`touch-manipulation select-none ${className}`}
+      style={{
+        touchAction: "manipulation",
+        WebkitTapHighlightColor: "transparent",
+        ...style,
+      }}
       {...props}
     >
       {children}
