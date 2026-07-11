@@ -152,18 +152,37 @@ export default function BudgetPage({
           className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none"
         />
 
-        <input
-          value={amount}
-          onChange={(event) =>
-            handleNewAmountChange(event.target.value)
-          }
-          type="text"
-          inputMode="decimal"
-          pattern="[0-9]*[.,]?[0-9]*"
-          placeholder="Montant"
-          autoComplete="off"
-          className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none"
-        />
+        <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-2">
+            <input
+                value={amount}
+                onChange={(event) =>
+                handleNewAmountChange(event.target.value)
+                }
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9]*[.,]?[0-9]*"
+                placeholder="Montant"
+                autoComplete="off"
+                className="min-w-0 flex-1 bg-transparent px-2 py-3 text-white outline-none"
+            />
+
+            <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                if (!amount.includes(",")) {
+                    setAmount((currentAmount) =>
+                    currentAmount.length === 0
+                        ? "0,"
+                        : `${currentAmount},`
+                    );
+                }
+                }}
+                className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-lg font-bold text-white active:bg-white/20"
+            >
+                ,
+            </button>
+        </div>
 
         <input
           value={icon}
@@ -231,30 +250,55 @@ export default function BudgetPage({
               className="col-span-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-white outline-none"
             />
 
-            <input
-              value={
-                budgetAmountInputs[budget.id] ??
-                String(budget.amount).replace(".", ",")
-              }
-              onChange={(event) =>
-                handleBudgetAmountChange(
-                  budget.id,
-                  event.target.value,
-                )
-              }
-              onBlur={() => saveBudgetAmount(budget.id)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  saveBudgetAmount(budget.id);
-                  event.currentTarget.blur();
-                }
-              }}
-              type="text"
-              inputMode="decimal"
-              pattern="[0-9]*[.,]?[0-9]*"
-              autoComplete="off"
-              className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-white outline-none"
-            />
+            <div className="flex items-center rounded-lg border border-white/10 bg-white/[0.04] px-2">
+                <input
+                    value={
+                    budgetAmountInputs[budget.id] ??
+                    String(budget.amount).replace(".", ",")
+                    }
+                    onChange={(event) =>
+                    handleBudgetAmountChange(
+                        budget.id,
+                        event.target.value,
+                    )
+                    }
+                    onBlur={() => saveBudgetAmount(budget.id)}
+                    onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                        saveBudgetAmount(budget.id);
+                        event.currentTarget.blur();
+                    }
+                    }}
+                    type="text"
+                    inputMode="decimal"
+                    pattern="[0-9]*[.,]?[0-9]*"
+                    autoComplete="off"
+                    className="min-w-0 flex-1 bg-transparent px-1 py-2 text-white outline-none"
+                />
+
+                <button
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                    const currentValue =
+                        budgetAmountInputs[budget.id] ??
+                        String(budget.amount).replace(".", ",");
+
+                    if (!currentValue.includes(",")) {
+                        setBudgetAmountInputs((currentInputs) => ({
+                        ...currentInputs,
+                        [budget.id]:
+                            currentValue.length === 0
+                            ? "0,"
+                            : `${currentValue},`,
+                        }));
+                    }
+                    }}
+                    className="rounded-md border border-white/10 bg-white/10 px-2 py-1 text-lg font-bold text-white active:bg-white/20"
+                >
+                    ,
+                </button>
+            </div>
 
             <select
               value={budget.color}

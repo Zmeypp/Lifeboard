@@ -170,26 +170,43 @@ export default function OperationsPage({
                       className="flex-1 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-white outline-none"
                     />
 
-                    <div className="flex items-center rounded-lg border border-white/10 bg-white/[0.04] px-3">
-                      <input
-                        value={editAmount}
-                        onChange={(event) =>
-                          handleEditAmountChange(event.target.value)
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            saveEdit(operation);
-                          }
-                        }}
-                        type="text"
-                        inputMode="decimal"
-                        pattern="[0-9]*[.,]?[0-9]*"
-                        autoComplete="off"
-                        placeholder="0,00"
-                        className="w-28 bg-transparent py-2 text-white outline-none"
-                      />
+                    <div className="flex items-center rounded-lg border border-white/10 bg-white/[0.04] px-2">
+                        <input
+                            value={editAmount}
+                            onChange={(event) =>
+                            handleEditAmountChange(event.target.value)
+                            }
+                            onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                                saveEdit(operation);
+                            }
+                            }}
+                            type="text"
+                            inputMode="decimal"
+                            pattern="[0-9]*[.,]?[0-9]*"
+                            autoComplete="off"
+                            placeholder="0,00"
+                            className="w-24 bg-transparent px-1 py-2 text-white outline-none"
+                        />
 
-                      <span className="text-slate-400">€</span>
+                        <button
+                            type="button"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => {
+                            if (!editAmount.includes(",")) {
+                                setEditAmount((currentAmount) =>
+                                currentAmount.length === 0
+                                    ? "0,"
+                                    : `${currentAmount},`
+                                );
+                            }
+                            }}
+                            className="mr-2 rounded-md border border-white/10 bg-white/10 px-2 py-1 text-lg font-bold text-white active:bg-white/20"
+                        >
+                            ,
+                        </button>
+
+                        <span className="text-slate-400">€</span>
                     </div>
                   </div>
                 ) : (

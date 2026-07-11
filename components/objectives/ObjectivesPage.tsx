@@ -207,18 +207,37 @@ export default function ObjectivesPage({
           className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none"
         />
 
-        <input
-          value={target}
-          onChange={(event) =>
-            handleNewTargetChange(event.target.value)
-          }
-          type="text"
-          inputMode="decimal"
-          pattern="[0-9]*[.,]?[0-9]*"
-          placeholder="Objectif €"
-          autoComplete="off"
-          className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none"
-        />
+        <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-2">
+            <input
+                value={target}
+                onChange={(event) =>
+                handleNewTargetChange(event.target.value)
+                }
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9]*[.,]?[0-9]*"
+                placeholder="Objectif €"
+                autoComplete="off"
+                className="min-w-0 flex-1 bg-transparent px-2 py-3 text-white outline-none"
+            />
+
+            <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                if (!target.includes(",")) {
+                    setTarget((currentTarget) =>
+                    currentTarget.length === 0
+                        ? "0,"
+                        : `${currentTarget},`
+                    );
+                }
+                }}
+                className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-lg font-bold text-white active:bg-white/20"
+            >
+                ,
+            </button>
+        </div>
 
         <input
           value={icon}
@@ -336,30 +355,55 @@ export default function ObjectivesPage({
                   }`}
                 />
 
-                <input
-                  value={
-                    goalTargetInputs[goal.id] ??
-                    String(goal.target).replace(".", ",")
-                  }
-                  onChange={(event) =>
-                    handleGoalTargetChange(
-                      goal.id,
-                      event.target.value,
-                    )
-                  }
-                  onBlur={() => saveGoalTarget(goal.id)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      saveGoalTarget(goal.id);
-                      event.currentTarget.blur();
-                    }
-                  }}
-                  type="text"
-                  inputMode="decimal"
-                  pattern="[0-9]*[.,]?[0-9]*"
-                  autoComplete="off"
-                  className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-white outline-none"
-                />
+                <div className="flex items-center rounded-lg border border-white/10 bg-white/[0.04] px-2">
+                    <input
+                        value={
+                        goalTargetInputs[goal.id] ??
+                        String(goal.target).replace(".", ",")
+                        }
+                        onChange={(event) =>
+                        handleGoalTargetChange(
+                            goal.id,
+                            event.target.value,
+                        )
+                        }
+                        onBlur={() => saveGoalTarget(goal.id)}
+                        onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                            saveGoalTarget(goal.id);
+                            event.currentTarget.blur();
+                        }
+                        }}
+                        type="text"
+                        inputMode="decimal"
+                        pattern="[0-9]*[.,]?[0-9]*"
+                        autoComplete="off"
+                        className="min-w-0 flex-1 bg-transparent px-1 py-2 text-white outline-none"
+                    />
+
+                    <button
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => {
+                        const currentValue =
+                            goalTargetInputs[goal.id] ??
+                            String(goal.target).replace(".", ",");
+
+                        if (!currentValue.includes(",")) {
+                            setGoalTargetInputs((currentInputs) => ({
+                            ...currentInputs,
+                            [goal.id]:
+                                currentValue.length === 0
+                                ? "0,"
+                                : `${currentValue},`,
+                            }));
+                        }
+                        }}
+                        className="rounded-md border border-white/10 bg-white/10 px-2 py-1 text-lg font-bold text-white active:bg-white/20"
+                    >
+                        ,
+                    </button>
+                </div>
 
                 <select
                   value={goal.color}
