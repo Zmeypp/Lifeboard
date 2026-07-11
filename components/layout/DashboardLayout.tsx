@@ -300,14 +300,14 @@ export default function DashboardLayout() {
         />
       )}
 
-      {activePage === "today-meal" && mealPlan && (
+      {activePage === "today-meal" && (
         <TodayMealPage
           mealPlan={mealPlan}
           generationStatus={generationStatus}
         />
       )}
 
-      {activePage === "week-meals" && mealPlan && (
+      {activePage === "week-meals" && (
         <WeekMealsPage
           mealPlan={mealPlan}
           onUpdateMealPlan={setMealPlan}

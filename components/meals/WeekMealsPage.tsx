@@ -18,7 +18,7 @@ type GenerationStatus = {
 };
 
 type Props = {
-  mealPlan: MealPlan;
+  mealPlan: MealPlan | null;
   onUpdateMealPlan: (mealPlan: MealPlan) => void;
   generationStatus: GenerationStatus | null;
 };
@@ -30,6 +30,9 @@ export default function WeekMealsPage({
   const [showQr, setShowQr] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [isRequestingGeneration, setIsRequestingGeneration] = useState(false);
 
   const dragState = useRef({
     active: false,
@@ -114,27 +117,40 @@ export default function WeekMealsPage({
   };
 
   const generateNewWeek = async () => {
-    if (generationStatus?.isGenerating) {
-      return;
+    if (
+        generationStatus?.isGenerating ||
+        isRequestingGeneration
+    ) {
+        return;
     }
 
-    console.log("Génération demandée");
+    setGenerationError(null);
+    setIsRequestingGeneration(true);
 
     try {
-      const response = await fetch("/api/meals/generate", {
+        const response = await fetch("/api/meals/generate", {
         method: "POST",
-      });
+        });
 
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP ${response.status}`);
-      }
+        const data = await response.json().catch(() => null);
 
-      console.log("Génération lancée");
+        if (!response.ok) {
+        throw new Error(
+            data?.error ??
+            data?.message ??
+            `Erreur HTTP ${response.status}`,
+        );
+        }
     } catch (error) {
-      console.error(
-        "Erreur pendant la génération :",
-        error,
-      );
+        const message =
+        error instanceof Error
+            ? error.message
+            : "Une erreur inconnue est survenue.";
+
+        console.error("Erreur pendant la génération :", error);
+        setGenerationError(message);
+    } finally {
+        setIsRequestingGeneration(false);
     }
   };
 
@@ -163,6 +179,62 @@ export default function WeekMealsPage({
           </div>
         </div>
       </div>
+    );
+  }
+
+  if (!mealPlan) {
+    return (
+        <div className="flex min-h-0 flex-1 items-center justify-center rounded-2xl border border-white/10 bg-[#0b1623] p-8">
+        <div className="max-w-xl text-center">
+            <div className="mb-4 text-6xl">🍽️</div>
+
+            <h2 className="text-3xl font-bold">
+            Aucun planning disponible
+            </h2>
+
+            <p className="mt-4 text-lg text-slate-400">
+            Le dernier planning n’a pas pu être chargé ou
+            sa génération a échoué.
+            </p>
+
+            {generationError && (
+            <div className="mt-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-300">
+                {generationError}
+            </div>
+            )}
+
+            <button
+            type="button"
+            disabled={
+                generationStatus?.isGenerating ||
+                isRequestingGeneration
+            }
+            onPointerUp={(event) => {
+                event.stopPropagation();
+                void generateNewWeek();
+            }}
+            onClick={(event) => {
+                if (event.detail === 0) {
+                void generateNewWeek();
+                }
+            }}
+            className="
+                mt-8 w-full rounded-xl bg-purple-600
+                px-6 py-4 text-lg font-bold
+                active:bg-purple-700
+                disabled:cursor-not-allowed
+                disabled:opacity-50
+            "
+            style={{
+                touchAction: "none",
+            }}
+            >
+            {isRequestingGeneration
+                ? "Lancement..."
+                : "Générer une nouvelle semaine"}
+            </button>
+        </div>
+        </div>
     );
   }
 
