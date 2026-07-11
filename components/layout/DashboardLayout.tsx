@@ -301,10 +301,26 @@ export default function DashboardLayout() {
       )}
 
       {activePage === "today-meal" && (
-        <TodayMealPage
-          mealPlan={mealPlan}
-          generationStatus={generationStatus}
-        />
+        mealPlan ? (
+            <TodayMealPage
+            mealPlan={mealPlan}
+            generationStatus={generationStatus}
+            />
+        ) : (
+            <div className="flex min-h-0 flex-1 items-center justify-center rounded-2xl border border-white/10 bg-[#0b1623] p-8">
+            <div className="text-center">
+                <div className="mb-4 text-6xl">🍽️</div>
+
+                <h2 className="text-3xl font-bold">
+                Aucun repas disponible
+                </h2>
+
+                <p className="mt-4 text-slate-400">
+                Génère d’abord une semaine de repas.
+                </p>
+            </div>
+            </div>
+        )
       )}
 
       {activePage === "week-meals" && (

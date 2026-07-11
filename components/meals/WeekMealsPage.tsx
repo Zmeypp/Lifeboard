@@ -41,11 +41,6 @@ export default function WeekMealsPage({
     moved: false,
   });
 
-  const qrData = JSON.stringify({
-    generated_at: mealPlan.generated_at,
-    shopping_list: mealPlan.shopping_list,
-  });
-
   const handlePointerDown = (
     event: ReactPointerEvent<HTMLDivElement>,
   ) => {
@@ -237,6 +232,11 @@ export default function WeekMealsPage({
         </div>
     );
   }
+
+  const qrData = JSON.stringify({
+    generated_at: mealPlan.generated_at,
+    shopping_list: mealPlan.shopping_list,
+  });
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
