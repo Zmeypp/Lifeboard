@@ -43,6 +43,15 @@ type GenerationStatus = {
   mealPlanMax: number;
   images: number;
   imagesMax: number;
+  status:
+    | "idle"
+    | "running"
+    | "waiting"
+    | "success"
+    | "error";
+  error: string | null;
+  waitReason: string | null;
+  retryAt: string | null;
 };
 
 export default function DashboardLayout() {

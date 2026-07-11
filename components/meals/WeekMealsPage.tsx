@@ -16,8 +16,15 @@ type GenerationStatus = {
   mealPlanMax: number;
   images: number;
   imagesMax: number;
-  status?: "idle" | "running" | "success" | "error";
-  error?: string | null;
+  status:
+    | "idle"
+    | "running"
+    | "waiting"
+    | "success"
+    | "error";
+  error: string | null;
+  waitReason: string | null;
+  retryAt: string | null;
 };
 
 type Props = {
@@ -34,23 +41,23 @@ export default function WeekMealsPage({
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const [generationError, setGenerationError] = useState<string | null>(null);
-  const [isRequestingGeneration, setIsRequestingGeneration] = useState(false);
+  const [generationError, setGenerationError] =
+    useState<string | null>(null);
 
-  const [showGenerationErrorPopup, setShowGenerationErrorPopup] =
-  useState(false);
+  const [
+    isRequestingGeneration,
+    setIsRequestingGeneration,
+  ] = useState(false);
 
-  useEffect(() => {
-    if (
-        generationStatus?.status === "error" &&
-        generationStatus.error
-    ) {
-        setShowGenerationErrorPopup(true);
-    }
-    }, [
-    generationStatus?.status,
-    generationStatus?.error,
-  ]);
+  const [
+    showGenerationErrorPopup,
+    setShowGenerationErrorPopup,
+  ] = useState(false);
+
+  const [
+    remainingRetrySeconds,
+    setRemainingRetrySeconds,
+  ] = useState(0);
 
   const dragState = useRef({
     active: false,
@@ -58,6 +65,67 @@ export default function WeekMealsPage({
     startScrollTop: 0,
     moved: false,
   });
+
+  const displayedGenerationError =
+    generationError ??
+    generationStatus?.error ??
+    "Une erreur inconnue est survenue.";
+
+  useEffect(() => {
+    if (
+      generationStatus?.status === "error" &&
+      generationStatus.error
+    ) {
+      setShowGenerationErrorPopup(true);
+    }
+  }, [
+    generationStatus?.status,
+    generationStatus?.error,
+  ]);
+
+  useEffect(() => {
+    if (
+      generationStatus?.status !== "waiting" ||
+      !generationStatus.retryAt
+    ) {
+      setRemainingRetrySeconds(0);
+      return;
+    }
+
+    const updateRemainingTime = () => {
+      const retryTimestamp = new Date(
+        generationStatus.retryAt as string,
+      ).getTime();
+
+      if (Number.isNaN(retryTimestamp)) {
+        setRemainingRetrySeconds(0);
+        return;
+      }
+
+      const remaining = Math.max(
+        0,
+        Math.ceil(
+          (retryTimestamp - Date.now()) / 1000,
+        ),
+      );
+
+      setRemainingRetrySeconds(remaining);
+    };
+
+    updateRemainingTime();
+
+    const intervalId = window.setInterval(
+      updateRemainingTime,
+      1000,
+    );
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [
+    generationStatus?.status,
+    generationStatus?.retryAt,
+  ]);
 
   const handlePointerDown = (
     event: ReactPointerEvent<HTMLDivElement>,
@@ -88,7 +156,8 @@ export default function WeekMealsPage({
     try {
       container.setPointerCapture(event.pointerId);
     } catch {
-      // Certains écrans tactiles ne prennent pas en charge le pointer capture.
+      // Certains écrans tactiles ne prennent pas en charge
+      // le pointer capture.
     }
   };
 
@@ -125,57 +194,92 @@ export default function WeekMealsPage({
       container &&
       container.hasPointerCapture(event.pointerId)
     ) {
-      container.releasePointerCapture(event.pointerId);
+      container.releasePointerCapture(
+        event.pointerId,
+      );
     }
   };
 
   const generateNewWeek = async () => {
     if (
-        generationStatus?.isGenerating ||
-        isRequestingGeneration
+      generationStatus?.isGenerating ||
+      isRequestingGeneration
     ) {
-        return;
+      return;
     }
 
     setGenerationError(null);
+    setShowGenerationErrorPopup(false);
     setIsRequestingGeneration(true);
 
     try {
-        const response = await fetch("/api/meals/generate", {
-        method: "POST",
-        });
+      const response = await fetch(
+        "/api/meals/generate",
+        {
+          method: "POST",
+        },
+      );
 
-        const data = await response.json().catch(() => null);
+      const data = await response
+        .json()
+        .catch(() => null);
 
-        if (!response.ok) {
+      if (!response.ok) {
         throw new Error(
-            data?.error ??
+          data?.error ??
             data?.message ??
             `Erreur HTTP ${response.status}`,
         );
-        }
+      }
     } catch (error) {
-        const message =
+      const message =
         error instanceof Error
-            ? error.message
-            : "Une erreur inconnue est survenue.";
+          ? error.message
+          : "Une erreur inconnue est survenue.";
 
-        console.error("Erreur pendant la génération :", error);
-        setGenerationError(message);
+      console.error(
+        "Erreur pendant la génération :",
+        error,
+      );
+
+      setGenerationError(message);
+      setShowGenerationErrorPopup(true);
     } finally {
-        setIsRequestingGeneration(false);
+      setIsRequestingGeneration(false);
     }
   };
 
   if (generationStatus?.isGenerating) {
+    const isWaiting =
+      generationStatus.status === "waiting";
+
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center rounded-2xl border border-white/10 bg-[#0b1623]">
-        <div className="text-center">
+      <div className="flex min-h-0 flex-1 items-center justify-center rounded-2xl border border-white/10 bg-[#0b1623] p-8">
+        <div className="w-full max-w-xl text-center">
           <div className="mx-auto mb-6 h-12 w-12 animate-spin rounded-full border-4 border-purple-400 border-t-transparent" />
 
           <h2 className="text-3xl font-bold">
-            Génération en cours...
+            {isWaiting
+              ? "Nouvelle tentative en attente"
+              : "Génération en cours..."}
           </h2>
+
+          {isWaiting && (
+            <div className="mt-6 rounded-xl border border-amber-400/30 bg-amber-500/10 p-5">
+              <p className="text-lg text-amber-200">
+                {generationStatus.waitReason ??
+                  "Le service est temporairement indisponible."}
+              </p>
+
+              <p className="mt-4 text-5xl font-bold text-amber-300">
+                {remainingRetrySeconds} s
+              </p>
+
+              <p className="mt-2 text-sm text-slate-400">
+                avant la prochaine tentative
+              </p>
+            </div>
+          )}
 
           <div className="mt-6 space-y-3 text-lg text-slate-300">
             <p>
@@ -197,57 +301,60 @@ export default function WeekMealsPage({
 
   if (!mealPlan) {
     return (
-        <div className="flex min-h-0 flex-1 items-center justify-center rounded-2xl border border-white/10 bg-[#0b1623] p-8">
+      <div className="flex min-h-0 flex-1 items-center justify-center rounded-2xl border border-white/10 bg-[#0b1623] p-8">
         <div className="max-w-xl text-center">
-            <div className="mb-4 text-6xl">🍽️</div>
+          <div className="mb-4 text-6xl">
+            🍽️
+          </div>
 
-            <h2 className="text-3xl font-bold">
+          <h2 className="text-3xl font-bold">
             Aucun planning disponible
-            </h2>
+          </h2>
 
-            <p className="mt-4 text-lg text-slate-400">
-            Le dernier planning n’a pas pu être chargé ou
-            sa génération a échoué.
-            </p>
+          <p className="mt-4 text-lg text-slate-400">
+            Le dernier planning n’a pas pu être
+            chargé ou sa génération a échoué.
+          </p>
 
-            {generationError && (
+          {(generationError ||
+            generationStatus?.error) && (
             <div className="mt-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-300">
-                {generationError}
+              {displayedGenerationError}
             </div>
-            )}
+          )}
 
-            <button
+          <button
             type="button"
             disabled={
-                generationStatus?.isGenerating ||
-                isRequestingGeneration
+              generationStatus?.isGenerating ||
+              isRequestingGeneration
             }
             onPointerUp={(event) => {
-                event.stopPropagation();
-                void generateNewWeek();
+              event.stopPropagation();
+              void generateNewWeek();
             }}
             onClick={(event) => {
-                if (event.detail === 0) {
+              if (event.detail === 0) {
                 void generateNewWeek();
-                }
+              }
             }}
             className="
-                mt-8 w-full rounded-xl bg-purple-600
-                px-6 py-4 text-lg font-bold
-                active:bg-purple-700
-                disabled:cursor-not-allowed
-                disabled:opacity-50
+              mt-8 w-full rounded-xl bg-purple-600
+              px-6 py-4 text-lg font-bold
+              active:bg-purple-700
+              disabled:cursor-not-allowed
+              disabled:opacity-50
             "
             style={{
-                touchAction: "none",
+              touchAction: "none",
             }}
-            >
+          >
             {isRequestingGeneration
-                ? "Lancement..."
-                : "Générer une nouvelle semaine"}
-            </button>
+              ? "Lancement..."
+              : "Générer une nouvelle semaine"}
+          </button>
         </div>
-        </div>
+      </div>
     );
   }
 
@@ -364,7 +471,10 @@ export default function WeekMealsPage({
 
           <button
             type="button"
-            disabled={generationStatus?.isGenerating}
+            disabled={
+              generationStatus?.isGenerating ||
+              isRequestingGeneration
+            }
             onPointerUp={(event) => {
               event.stopPropagation();
               void generateNewWeek();
@@ -385,8 +495,8 @@ export default function WeekMealsPage({
               touchAction: "none",
             }}
           >
-            {generationStatus?.isGenerating
-              ? "Génération en cours..."
+            {isRequestingGeneration
+              ? "Lancement..."
               : "Générer une nouvelle semaine"}
           </button>
         </div>
@@ -447,74 +557,135 @@ export default function WeekMealsPage({
         </div>
       )}
 
-
       {showGenerationErrorPopup &&
-  generationStatus?.status === "error" && (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-6 backdrop-blur-sm">
-      <div className="w-full max-w-xl rounded-2xl border border-red-400/30 bg-[#0b1623] p-8 shadow-2xl">
-        <div className="flex items-start justify-between gap-5">
-          <div>
-            <div className="mb-3 text-5xl">⚠️</div>
+        (generationError ||
+          generationStatus?.status === "error") && (
+          <div
+            className="
+              fixed inset-0 z-[60] flex items-center
+              justify-center bg-black/75 p-6
+              backdrop-blur-sm
+            "
+            style={{
+              touchAction: "none",
+            }}
+          >
+            <div className="w-full max-w-xl rounded-2xl border border-red-400/30 bg-[#0b1623] p-8 shadow-2xl">
+              <div className="flex items-start justify-between gap-5">
+                <div>
+                  <div className="mb-3 text-5xl">
+                    ⚠️
+                  </div>
 
-            <h2 className="text-2xl font-bold text-red-300">
-              Génération interrompue
-            </h2>
+                  <h2 className="text-2xl font-bold text-red-300">
+                    Génération interrompue
+                  </h2>
+                </div>
+
+                <button
+                  type="button"
+                  onPointerUp={(event) => {
+                    event.stopPropagation();
+                    setShowGenerationErrorPopup(
+                      false,
+                    );
+                  }}
+                  onClick={(event) => {
+                    if (event.detail === 0) {
+                      setShowGenerationErrorPopup(
+                        false,
+                      );
+                    }
+                  }}
+                  className="rounded-lg p-2 active:bg-white/15"
+                  style={{
+                    touchAction: "none",
+                  }}
+                  aria-label="Fermer"
+                >
+                  <X />
+                </button>
+              </div>
+
+              <p className="mt-5 text-lg text-slate-300">
+                La nouvelle semaine n’a pas été
+                publiée. L’ancien planning reste
+                affiché.
+              </p>
+
+              <div className="mt-5 max-h-48 overflow-y-auto rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-red-200">
+                {displayedGenerationError}
+              </div>
+
+              <div className="mt-7 flex gap-4">
+                <button
+                  type="button"
+                  onPointerUp={(event) => {
+                    event.stopPropagation();
+                    setShowGenerationErrorPopup(
+                      false,
+                    );
+                  }}
+                  onClick={(event) => {
+                    if (event.detail === 0) {
+                      setShowGenerationErrorPopup(
+                        false,
+                      );
+                    }
+                  }}
+                  className="
+                    flex-1 rounded-xl border
+                    border-white/10 bg-white/5
+                    px-5 py-4 font-bold
+                    active:bg-white/10
+                  "
+                  style={{
+                    touchAction: "none",
+                  }}
+                >
+                  Fermer
+                </button>
+
+                <button
+                  type="button"
+                  disabled={
+                    isRequestingGeneration ||
+                    generationStatus?.isGenerating
+                  }
+                  onPointerUp={(event) => {
+                    event.stopPropagation();
+                    setShowGenerationErrorPopup(
+                      false,
+                    );
+                    void generateNewWeek();
+                  }}
+                  onClick={(event) => {
+                    if (event.detail === 0) {
+                      setShowGenerationErrorPopup(
+                        false,
+                      );
+                      void generateNewWeek();
+                    }
+                  }}
+                  className="
+                    flex-1 rounded-xl bg-purple-600
+                    px-5 py-4 font-bold
+                    active:bg-purple-700
+                    disabled:cursor-not-allowed
+                    disabled:opacity-50
+                  "
+                  style={{
+                    touchAction: "none",
+                  }}
+                >
+                  {isRequestingGeneration
+                    ? "Relance..."
+                    : "Réessayer"}
+                </button>
+              </div>
+            </div>
           </div>
-
-          <button
-            type="button"
-            onPointerUp={(event) => {
-              event.stopPropagation();
-              setShowGenerationErrorPopup(false);
-            }}
-            className="rounded-lg p-2 active:bg-white/15"
-            style={{ touchAction: "none" }}
-          >
-            <X />
-          </button>
-        </div>
-
-        <p className="mt-5 text-lg text-slate-300">
-          La nouvelle semaine n’a pas été publiée.
-          L’ancien planning reste affiché.
-        </p>
-
-        <div className="mt-5 max-h-48 overflow-y-auto rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-red-200">
-          {generationStatus.error ??
-            "Une erreur inconnue est survenue."}
-        </div>
-
-        <div className="mt-7 flex gap-4">
-          <button
-            type="button"
-            onPointerUp={(event) => {
-              event.stopPropagation();
-              setShowGenerationErrorPopup(false);
-            }}
-            className="flex-1 rounded-xl border border-white/10 bg-white/5 px-5 py-4 font-bold active:bg-white/10"
-            style={{ touchAction: "none" }}
-          >
-            Fermer
-          </button>
-
-          <button
-            type="button"
-            disabled={isRequestingGeneration}
-            onPointerUp={(event) => {
-              event.stopPropagation();
-              setShowGenerationErrorPopup(false);
-              void generateNewWeek();
-            }}
-            className="flex-1 rounded-xl bg-purple-600 px-5 py-4 font-bold active:bg-purple-700 disabled:opacity-50"
-            style={{ touchAction: "none" }}
-          >
-            Réessayer
-          </button>
-        </div>
-      </div>
-    </div>
-  )}
-
+        )}
     </div>
   );
 }
