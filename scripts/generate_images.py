@@ -20,14 +20,14 @@ OUTPUT_DIR = ROOT_DIR / "images"
 
 STATUS_FILE = ROOT_DIR / "scripts" / "generation_status.json"
 
-MAX_WORKERS = 2
-MAX_ATTEMPTS = 3
+MAX_WORKERS = 1
+MAX_ATTEMPTS = 5
 
 API_KEY = "sk_nlS9tHNY9NY0TNQSS6sLcpKmsE19Tund"
 
 if not API_KEY:
     raise RuntimeError(
-        "La variable d'environnement POLLINATIONS_API_KEY est absente."
+        "La clé API Pollinations est absente."
     )
 
 OUTPUT_DIR.mkdir(
@@ -97,6 +97,21 @@ def clear_output_directory():
             file.unlink()
 
 
+def get_retry_delay(
+    response: requests.Response,
+    attempt: int,
+) -> int:
+    retry_after = response.headers.get("Retry-After")
+
+    if retry_after:
+        try:
+            return max(int(retry_after), 10)
+        except ValueError:
+            pass
+
+    return 15 * attempt
+
+
 def generate_image(day: dict) -> Path:
     date = day["date"]
     meal = day["meal"]
@@ -130,6 +145,10 @@ def generate_image(day: dict) -> Path:
         / f"{date}_{slugify(title)}.jpg"
     )
 
+    temporary_filename = filename.with_suffix(
+        ".tmp.jpg"
+    )
+
     last_error: Exception | None = None
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
@@ -147,6 +166,27 @@ def generate_image(day: dict) -> Path:
                 },
                 timeout=300,
             )
+
+            if response.status_code == 429:
+                delay = get_retry_delay(
+                    response,
+                    attempt,
+                )
+
+                if attempt < MAX_ATTEMPTS:
+                    print(
+                        f"Limite Pollinations atteinte pour « {title} ». "
+                        f"Nouvelle tentative dans {delay} secondes.",
+                        flush=True,
+                    )
+
+                    time.sleep(delay)
+                    continue
+
+                raise RuntimeError(
+                    "Pollinations refuse toujours la requête "
+                    f"après {MAX_ATTEMPTS} tentatives."
+                )
 
             response.raise_for_status()
 
@@ -168,15 +208,14 @@ def generate_image(day: dict) -> Path:
                     "Pollinations a renvoyé une image vide."
                 )
 
-            temporary_filename = filename.with_suffix(
-                ".tmp.jpg"
-            )
-
             temporary_filename.write_bytes(
                 response.content
             )
 
-            if temporary_filename.stat().st_size == 0:
+            if (
+                not temporary_filename.exists()
+                or temporary_filename.stat().st_size == 0
+            ):
                 raise RuntimeError(
                     f"L'image temporaire {temporary_filename.name} "
                     "est vide."
@@ -202,15 +241,18 @@ def generate_image(day: dict) -> Path:
                 flush=True,
             )
 
-            temporary_filename = filename.with_suffix(
-                ".tmp.jpg"
-            )
-
             if temporary_filename.exists():
                 temporary_filename.unlink()
 
             if attempt < MAX_ATTEMPTS:
-                time.sleep(attempt * 3)
+                delay = 5 * attempt
+
+                print(
+                    f"Nouvelle tentative dans {delay} secondes.",
+                    flush=True,
+                )
+
+                time.sleep(delay)
 
     raise RuntimeError(
         f"Impossible de générer l'image « {title} » "
@@ -263,6 +305,7 @@ def main():
 
             try:
                 generated_image = future.result()
+
                 generated_images.append(
                     generated_image
                 )
@@ -280,6 +323,10 @@ def main():
                     f"{generated_count}/{len(days)}",
                     flush=True,
                 )
+
+                # Petite pause entre deux images réussies
+                # pour limiter les erreurs 429.
+                time.sleep(3)
 
             except Exception as error:
                 errors.append(
