@@ -76,9 +76,11 @@ export default function TodayMealPage({
 
         <div className="mb-6 overflow-hidden rounded-2xl border border-white/10 bg-black/20">
         <img
-            src={`/images/${imageName}`}
-            alt={day.meal.title}
-            className="h-80 w-full object-contain bg-[#111827]"
+          src={`/images/${imageName}`}
+          alt={day.meal.title}
+          className="h-80 w-full object-contain bg-[#111827]"
+          onLoad={() => console.log("✅ Image chargée :", imageName)}
+          onError={() => console.error("❌ Image introuvable :", imageName)}
         />
         </div>
 
