@@ -67,11 +67,6 @@ export default function StatisticsPage({
   const averageExpense =
     expenses.length > 0 ? Math.round(totalExpenses / expenses.length) : 0;
 
-  const expensesByCategory = expenses.reduce<Record<string, number>>((acc, operation) => {
-    acc[operation.category] = (acc[operation.category] ?? 0) + Math.abs(operation.amount);
-    return acc;
-  }, {});
-
   const expensesCategoryData = useMemo(() => {
     const expensesByCategory = expenses.reduce<Record<string, number>>(
         (acc, operation) => {
@@ -91,12 +86,6 @@ export default function StatisticsPage({
         })
     );
   }, [expenses]);
-
-  const incomeByMonth = incomes.reduce<Record<string, number>>((acc, operation) => {
-    const month = operation.date.split("/")[1] ?? "??";
-    acc[month] = (acc[month] ?? 0) + operation.amount;
-    return acc;
-  }, {});
 
   const incomeMonthData = useMemo(() => {
     const incomeByMonth = incomes.reduce<Record<string, number>>(
