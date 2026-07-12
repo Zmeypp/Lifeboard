@@ -117,24 +117,71 @@ export default function StatisticsPage({
           subtitle={biggestExpense?.title ?? "Aucune dépense"}
         />
 
-        <ChartCard title="Dépenses par catégorie" className="col-span-6 row-span-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={expensesCategoryData}
-                dataKey="value"
-                nameKey="name"
-                outerRadius={80}
-                isAnimationActive={false}
-                label
-              >
-                {expensesCategoryData.map((_, index) => (
-                  <Cell key={index} fill={chartColors[index % chartColors.length]} />
+        <ChartCard
+            title="Dépenses par catégorie"
+            className="col-span-6 row-span-2"
+        >
+            <div className="flex h-[calc(100%-32px)] min-h-0">
+                <div className="min-w-0 flex-1">
+                <ResponsiveContainer
+                    width="100%"
+                    height="100%"
+                    debounce={150}
+                    minWidth={0}
+                    minHeight={200}
+                >
+                    <PieChart>
+                    <Pie
+                        data={expensesCategoryData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        isAnimationActive={false}
+                        labelLine={false}
+                    >
+                        {expensesCategoryData.map((entry, index) => (
+                        <Cell
+                            key={entry.name}
+                            fill={chartColors[index % chartColors.length]}
+                        />
+                        ))}
+                    </Pie>
+
+                    <Tooltip
+                        isAnimationActive={false}
+                        animationDuration={0}
+                    />
+                    </PieChart>
+                </ResponsiveContainer>
+                </div>
+
+                <div className="flex w-44 flex-col justify-center gap-2 pl-3">
+                {expensesCategoryData.map((entry, index) => (
+                    <div
+                    key={entry.name}
+                    className="flex items-center gap-2 text-xs text-slate-300"
+                    >
+                    <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{
+                        backgroundColor:
+                            chartColors[index % chartColors.length],
+                        }}
+                    />
+
+                    <span className="min-w-0 flex-1 truncate">
+                        {entry.name}
+                    </span>
+
+                    <span className="shrink-0 font-semibold text-white">
+                        {entry.value.toLocaleString("fr-FR")} €
+                    </span>
+                    </div>
                 ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+                </div>
+            </div>
         </ChartCard>
 
         <ChartCard title="Revenus par mois" className="col-span-6 row-span-2">
