@@ -6,12 +6,21 @@ import type { WeatherData } from "@/lib/weather";
 
 type TopBarProps = {
   firstName: string;
+  city: string;
+  latitude: number;
+  longitude: number;
   isPresentation?: boolean;
 };
 
 const TEN_MINUTES = 10 * 60 * 1000;
 
-export default function TopBar({ firstName, isPresentation = false, }: TopBarProps) {
+export default function TopBar({
+  firstName,
+  city,
+  latitude,
+  longitude,
+  isPresentation = false,
+}: TopBarProps) {
   const [now, setNow] = useState(new Date());
   const [weather, setWeather] = useState<WeatherData | null>(null);
 
@@ -24,40 +33,67 @@ export default function TopBar({ firstName, isPresentation = false, }: TopBarPro
   }, []);
 
   useEffect(() => {
+    let isCancelled = false;
+
     async function loadWeather() {
-      const response = await fetch("/api/weather");
-      const data = await response.json();
-      setWeather(data);
+      try {
+        const params = new URLSearchParams({
+          latitude: latitude.toString(),
+          longitude: longitude.toString(),
+        });
+
+        const response = await fetch(`/api/weather?${params.toString()}`, {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            `Erreur météo : ${response.status} ${response.statusText}`
+          );
+        }
+
+        const data: WeatherData = await response.json();
+
+        if (!isCancelled) {
+          setWeather(data);
+        }
+      } catch (error) {
+        console.error(
+          "Impossible de charger la météo dans la TopBar :",
+          error
+        );
+      }
     }
 
     loadWeather();
 
     const weatherInterval = setInterval(loadWeather, TEN_MINUTES);
 
-    return () => clearInterval(weatherInterval);
-  }, []);
+    return () => {
+      isCancelled = true;
+      clearInterval(weatherInterval);
+    };
+  }, [latitude, longitude]);
 
   return (
     <header className="flex h-[88px] items-center justify-between rounded-2xl border border-white/10 bg-[#0b1623] px-8">
       <div>
-  <h1 className="text-3xl font-bold">
-    Bonjour {firstName || "Utilisateur"} 👋
-  </h1>
+        <h1 className="text-3xl font-bold">
+          Bonjour {firstName || "Utilisateur"} 👋
+        </h1>
 
-  {isPresentation ? (
-    <div className="mt-1 flex items-center gap-2">
-      <span className="h-2 w-2 animate-pulse rounded-full bg-purple-400" />
+        {isPresentation ? (
+          <div className="mt-1 flex items-center gap-2">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-purple-400" />
 
-      <span className="text-sm font-medium text-purple-400">
-        Mode présentation
-      </span>
-    </div>
-  ) : (
-    <p className="text-slate-400">
-      Bienvenue sur LifeBoard
-    </p>
-  )}
-</div>
+            <span className="text-sm font-medium text-purple-400">
+              Mode présentation
+            </span>
+          </div>
+        ) : (
+          <p className="text-slate-400">Bienvenue sur LifeBoard</p>
+        )}
+      </div>
 
       <div className="text-center">
         <div className="text-4xl font-bold">
@@ -84,7 +120,10 @@ export default function TopBar({ firstName, isPresentation = false, }: TopBarPro
           <div className="text-2xl font-bold">
             {weather ? `${Math.round(weather.temperature)}°C` : "--°C"}
           </div>
-          <div className="text-sm text-slate-400">Lille</div>
+
+          <div className="text-sm text-slate-400">
+            {city || "Localisation"}
+          </div>
         </div>
       </div>
     </header>

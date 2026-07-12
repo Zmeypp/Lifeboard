@@ -242,9 +242,12 @@ export default function DashboardLayout() {
 
         <section className="flex min-h-0 flex-1 flex-col gap-6">
           <TopBar
-  firstName={settings.firstName}
-  isPresentation={isPresentation}
-/>
+            firstName={settings.firstName}
+            city={settings.weatherCity}
+            latitude={settings.weatherLatitude}
+            longitude={settings.weatherLongitude}
+            isPresentation={isPresentation}
+          />
 
           <div className="flex min-h-0 flex-1">
   <AnimatePresence mode="wait">
