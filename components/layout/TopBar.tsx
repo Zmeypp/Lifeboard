@@ -25,9 +25,20 @@ export default function TopBar({ firstName, isPresentation = false, }: TopBarPro
 
   useEffect(() => {
     async function loadWeather() {
-      const response = await fetch("/api/weather");
-      const data = await response.json();
-      setWeather(data);
+        try {
+            const response = await fetch(`/api/weather?t=${Date.now()}`, {
+            cache: "no-store",
+            });
+
+            if (!response.ok) {
+            throw new Error(`Erreur météo : ${response.status}`);
+            }
+
+            const data: WeatherData = await response.json();
+            setWeather(data);
+        } catch (error) {
+            console.error("Impossible de rafraîchir la météo :", error);
+        }
     }
 
     loadWeather();

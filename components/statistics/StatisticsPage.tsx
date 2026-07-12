@@ -125,6 +125,8 @@ export default function StatisticsPage({
                 dataKey="value"
                 nameKey="name"
                 outerRadius={80}
+                animationDuration={500}
+                animationEasing="ease-out"
                 label
               >
                 {expensesCategoryData.map((_, index) => (
