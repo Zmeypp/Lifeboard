@@ -24,28 +24,54 @@ export default function TopBar({ firstName, isPresentation = false, }: TopBarPro
   }, []);
 
   useEffect(() => {
+    let weatherInterval: ReturnType<typeof setInterval> | null = null;
+    let isCancelled = false;
+
     async function loadWeather() {
         try {
-            const response = await fetch(`/api/weather?t=${Date.now()}`, {
+        const response = await fetch("/api/weather", {
             cache: "no-store",
-            });
+        });
 
-            if (!response.ok) {
+        if (!response.ok) {
             throw new Error(`Erreur météo : ${response.status}`);
-            }
+        }
 
-            const data: WeatherData = await response.json();
-            setWeather(data);
+        const data: WeatherData = await response.json();
+
+        if (isCancelled) {
+            return;
+        }
+
+        console.log("Météo TopBar chargée :", data);
+
+        setWeather(data);
+
+        // Une fois la première météo obtenue,
+        // rafraîchissement toutes les 10 minutes.
+        if (weatherInterval) {
+            clearInterval(weatherInterval);
+        }
+
+        weatherInterval = setInterval(loadWeather, TEN_MINUTES);
         } catch (error) {
-            console.error("Impossible de rafraîchir la météo :", error);
+        console.error("Impossible de charger la météo TopBar :", error);
         }
     }
 
     loadWeather();
 
-    const weatherInterval = setInterval(loadWeather, TEN_MINUTES);
+    // Tant que le premier chargement n’a pas réussi,
+    // on réessaie toutes les 15 secondes.
+    weatherInterval = setInterval(loadWeather, 15_000);
 
-    return () => clearInterval(weatherInterval);
+    return () => {
+        isCancelled = true;
+
+        if (weatherInterval) {
+        clearInterval(weatherInterval);
+        }
+    };
   }, []);
 
   return (
