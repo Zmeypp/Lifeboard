@@ -18,6 +18,7 @@ import type { Budget } from "@/data/budgets";
 import type { Operation } from "@/data/operations";
 import type { NetWorthSnapshot } from "@/data/netWorthSnapshots";
 import { calculateNetWorth } from "@/lib/netWorth";
+import { useMemo } from "react";
 
 type StatisticsPageProps = {
   operations: Operation[];
@@ -32,8 +33,21 @@ export default function StatisticsPage({
   budgets,
   netWorthSnapshots,
 }: StatisticsPageProps) {
-  const expenses = operations.filter((operation) => operation.type === "expense");
-  const incomes = operations.filter((operation) => operation.type === "income");
+  const expenses = useMemo(
+    () =>
+        operations.filter(
+        (operation) => operation.type === "expense"
+        ),
+    [operations]
+    );
+
+    const incomes = useMemo(
+    () =>
+        operations.filter(
+        (operation) => operation.type === "income"
+        ),
+    [operations]
+  );
 
   const totalExpenses = expenses.reduce(
     (total, operation) => total + Math.abs(operation.amount),
@@ -58,9 +72,25 @@ export default function StatisticsPage({
     return acc;
   }, {});
 
-  const expensesCategoryData = Object.entries(expensesByCategory).map(
-    ([name, value]) => ({ name, value })
-  );
+  const expensesCategoryData = useMemo(() => {
+    const expensesByCategory = expenses.reduce<Record<string, number>>(
+        (acc, operation) => {
+        acc[operation.category] =
+            (acc[operation.category] ?? 0) +
+            Math.abs(operation.amount);
+
+        return acc;
+        },
+        {}
+    );
+
+    return Object.entries(expensesByCategory).map(
+        ([name, value]) => ({
+        name,
+        value,
+        })
+    );
+  }, [expenses]);
 
   const incomeByMonth = incomes.reduce<Record<string, number>>((acc, operation) => {
     const month = operation.date.split("/")[1] ?? "??";
@@ -68,21 +98,40 @@ export default function StatisticsPage({
     return acc;
   }, {});
 
-  const incomeMonthData = Object.entries(incomeByMonth).map(([month, value]) => ({
-    month,
-    value,
-  }));
+  const incomeMonthData = useMemo(() => {
+    const incomeByMonth = incomes.reduce<Record<string, number>>(
+        (acc, operation) => {
+        const month = operation.date.split("/")[1] ?? "??";
+
+        acc[month] =
+            (acc[month] ?? 0) + operation.amount;
+
+        return acc;
+        },
+        {}
+    );
+
+    return Object.entries(incomeByMonth).map(
+        ([month, value]) => ({
+        month,
+        value,
+        })
+    );
+  }, [incomes]);
 
   const currentNetWorth = calculateNetWorth(budgets, operations);
 
-  const netWorthData = [
-    ...netWorthSnapshots,
-    {
-      month: "current",
-      label: "Aujourd'hui",
-      value: currentNetWorth,
-    },
-  ];
+  const netWorthData = useMemo(
+    () => [
+        ...netWorthSnapshots,
+        {
+        month: "current",
+        label: "Aujourd'hui",
+        value: currentNetWorth,
+        },
+    ],
+    [netWorthSnapshots, currentNetWorth]
+  );
 
   const livretA = budgets.find((budget) => budget.name === "Livret A");
   const baseLivretA = livretA?.amount ?? 0;
@@ -93,10 +142,19 @@ export default function StatisticsPage({
 
   const currentLivretA = baseLivretA + livretAImpact;
 
-  const livretAData = [
-    { label: "Départ", value: baseLivretA },
-    { label: "Actuel", value: currentLivretA },
-  ];
+  const livretAData = useMemo(
+    () => [
+        {
+        label: "Départ",
+        value: baseLivretA,
+        },
+        {
+        label: "Actuel",
+        value: currentLivretA,
+        },
+    ],
+    [baseLivretA, currentLivretA]
+  );
 
   return (
     <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-[#0b1623] p-6">
@@ -121,14 +179,12 @@ export default function StatisticsPage({
             title="Dépenses par catégorie"
             className="col-span-6 row-span-2"
         >
-            <div className="flex h-[calc(100%-32px)] min-h-0">
-                <div className="min-w-0 flex-1">
+            <div className="flex h-full min-h-0 min-w-0">
+                <div className="h-full min-h-0 min-w-0 flex-1">
                 <ResponsiveContainer
                     width="100%"
                     height="100%"
-                    debounce={150}
-                    minWidth={0}
-                    minHeight={200}
+                    debounce={200}
                 >
                     <PieChart>
                     <Pie
@@ -137,9 +193,9 @@ export default function StatisticsPage({
                         nameKey="name"
                         cx="50%"
                         cy="50%"
+                        innerRadius={0}
                         outerRadius={80}
                         isAnimationActive={false}
-                        labelLine={false}
                     >
                         {expensesCategoryData.map((entry, index) => (
                         <Cell
@@ -157,7 +213,7 @@ export default function StatisticsPage({
                 </ResponsiveContainer>
                 </div>
 
-                <div className="flex w-44 flex-col justify-center gap-2 pl-3">
+                <div className="flex w-44 shrink-0 flex-col justify-center gap-2 pl-3">
                 {expensesCategoryData.map((entry, index) => (
                     <div
                     key={entry.name}
@@ -189,8 +245,11 @@ export default function StatisticsPage({
             <BarChart data={incomeMonthData}>
               <XAxis dataKey="month" stroke="#94a3b8" />
               <YAxis stroke="#94a3b8" />
-              <Tooltip />
-              <Bar dataKey="value" fill="#22c55e" radius={[8, 8, 0, 0]} />
+              <Tooltip
+                isAnimationActive={false}
+                animationDuration={0}
+              />
+              <Bar dataKey="value" fill="#22c55e" radius={[8, 8, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -200,8 +259,11 @@ export default function StatisticsPage({
             <LineChart data={netWorthData}>
               <XAxis dataKey="label" stroke="#94a3b8" />
               <YAxis stroke="#94a3b8" />
-              <Tooltip />
-              <Line type="monotone" dataKey="value" stroke="#a855f7" strokeWidth={3} />
+              <Tooltip
+                isAnimationActive={false}
+                animationDuration={0}
+              />
+              <Line type="monotone" dataKey="value" stroke="#a855f7" strokeWidth={3} isAnimationActive={false} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -211,8 +273,11 @@ export default function StatisticsPage({
             <LineChart data={livretAData}>
               <XAxis dataKey="label" stroke="#94a3b8" />
               <YAxis stroke="#94a3b8" />
-              <Tooltip />
-              <Line type="monotone" dataKey="value" stroke="#22c55e" strokeWidth={3} />
+              <Tooltip
+                isAnimationActive={false}
+                animationDuration={0}
+              />
+              <Line type="monotone" dataKey="value" stroke="#22c55e" strokeWidth={3} isAnimationActive={false} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -249,9 +314,16 @@ function ChartCard({
   className?: string;
 }) {
   return (
-    <div className={`rounded-xl border border-white/10 bg-white/[0.03] p-4 ${className}`}>
-      <p className="mb-3 text-sm font-semibold text-slate-300">{title}</p>
-      <div className="h-[calc(100%-32px)]">{children}</div>
+    <div
+      className={`flex min-h-0 min-w-0 flex-col rounded-xl border border-white/10 bg-white/[0.03] p-4 ${className}`}
+    >
+      <p className="mb-3 shrink-0 text-sm font-semibold text-slate-300">
+        {title}
+      </p>
+
+      <div className="min-h-0 min-w-0 flex-1">
+        {children}
+      </div>
     </div>
   );
 }
