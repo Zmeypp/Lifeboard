@@ -63,3 +63,17 @@ body {
   color: white;
   outline: none;
 }
+
+.recharts-wrapper,
+.recharts-surface,
+.recharts-sector,
+.recharts-pie-sector,
+.recharts-layer {
+  animation: none !important;
+  transition: none !important;
+}
+
+.recharts-sector {
+  transition-property: none !important;
+  transition-duration: 0s !important;
+}

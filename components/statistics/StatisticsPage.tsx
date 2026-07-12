@@ -181,11 +181,7 @@ export default function StatisticsPage({
         >
             <div className="flex h-full min-h-0 min-w-0">
                 <div className="h-full min-h-0 min-w-0 flex-1">
-                <ResponsiveContainer
-                    width="100%"
-                    height="100%"
-                    debounce={200}
-                >
+                <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                     <Pie
                         data={expensesCategoryData}
@@ -196,11 +192,17 @@ export default function StatisticsPage({
                         innerRadius={0}
                         outerRadius={80}
                         isAnimationActive={false}
+                        animationBegin={0}
+                        animationDuration={0}
                     >
                         {expensesCategoryData.map((entry, index) => (
                         <Cell
                             key={entry.name}
                             fill={chartColors[index % chartColors.length]}
+                            style={{
+                            animation: "none",
+                            transition: "none",
+                            }}
                         />
                         ))}
                     </Pie>
