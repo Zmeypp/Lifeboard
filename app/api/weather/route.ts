@@ -1,27 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWeather } from "@/lib/weather";
 
-export const dynamic = "force-dynamic";
-
 export async function GET(request: NextRequest) {
-  const latitudeParam = request.nextUrl.searchParams.get("latitude");
-  const longitudeParam = request.nextUrl.searchParams.get("longitude");
+  const { searchParams } = new URL(request.url);
 
-  const latitude =
-    latitudeParam && Number.isFinite(Number(latitudeParam))
-      ? Number(latitudeParam)
-      : undefined;
+  const latitude = Number(searchParams.get("latitude"));
+  const longitude = Number(searchParams.get("longitude"));
 
-  const longitude =
-    longitudeParam && Number.isFinite(Number(longitudeParam))
-      ? Number(longitudeParam)
-      : undefined;
+  const weather = await getWeather(
+    Number.isNaN(latitude) ? undefined : latitude,
+    Number.isNaN(longitude) ? undefined : longitude
+  );
 
-  const weather = await getWeather(latitude, longitude);
-
-  return NextResponse.json(weather, {
-    headers: {
-      "Cache-Control": "no-store",
-    },
-  });
+  return NextResponse.json(weather);
 }

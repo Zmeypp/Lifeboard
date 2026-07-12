@@ -24,54 +24,17 @@ export default function TopBar({ firstName, isPresentation = false, }: TopBarPro
   }, []);
 
   useEffect(() => {
-    let weatherInterval: ReturnType<typeof setInterval> | null = null;
-    let isCancelled = false;
-
     async function loadWeather() {
-        try {
-        const response = await fetch("/api/weather", {
-            cache: "no-store",
-        });
-
-        if (!response.ok) {
-            throw new Error(`Erreur météo : ${response.status}`);
-        }
-
-        const data: WeatherData = await response.json();
-
-        if (isCancelled) {
-            return;
-        }
-
-        console.log("Météo TopBar chargée :", data);
-
-        setWeather(data);
-
-        // Une fois la première météo obtenue,
-        // rafraîchissement toutes les 10 minutes.
-        if (weatherInterval) {
-            clearInterval(weatherInterval);
-        }
-
-        weatherInterval = setInterval(loadWeather, TEN_MINUTES);
-        } catch (error) {
-        console.error("Impossible de charger la météo TopBar :", error);
-        }
+      const response = await fetch("/api/weather");
+      const data = await response.json();
+      setWeather(data);
     }
 
     loadWeather();
 
-    // Tant que le premier chargement n’a pas réussi,
-    // on réessaie toutes les 15 secondes.
-    weatherInterval = setInterval(loadWeather, 15_000);
+    const weatherInterval = setInterval(loadWeather, TEN_MINUTES);
 
-    return () => {
-        isCancelled = true;
-
-        if (weatherInterval) {
-        clearInterval(weatherInterval);
-        }
-    };
+    return () => clearInterval(weatherInterval);
   }, []);
 
   return (
