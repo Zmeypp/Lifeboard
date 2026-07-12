@@ -34,44 +34,130 @@ export default function TopBar({
 
   useEffect(() => {
     let isCancelled = false;
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+    let refreshInterval: ReturnType<typeof setInterval> | null = null;
+    let currentController: AbortController | null = null;
+    let isLoading = false;
 
     async function loadWeather() {
-      try {
+        if (isCancelled || isLoading) {
+        return;
+        }
+
+        isLoading = true;
+
+        currentController?.abort();
+        currentController = new AbortController();
+
+        const requestTimeout = setTimeout(() => {
+        currentController?.abort();
+        }, 10_000);
+
+        try {
         const params = new URLSearchParams({
-          latitude: latitude.toString(),
-          longitude: longitude.toString(),
+            latitude: latitude.toString(),
+            longitude: longitude.toString(),
+            timestamp: Date.now().toString(),
         });
 
         const response = await fetch(`/api/weather?${params.toString()}`, {
-          cache: "no-store",
+            cache: "no-store",
+            signal: currentController.signal,
         });
 
         if (!response.ok) {
-          throw new Error(
+            throw new Error(
             `Erreur météo : ${response.status} ${response.statusText}`
-          );
+            );
         }
 
         const data: WeatherData = await response.json();
 
-        if (!isCancelled) {
-          setWeather(data);
+        if (isCancelled) {
+            return;
         }
-      } catch (error) {
-        console.error(
-          "Impossible de charger la météo dans la TopBar :",
-          error
-        );
-      }
+
+        setWeather(data);
+
+        // La météo a bien été obtenue :
+        // on arrête les tentatives rapides.
+        if (retryTimeout) {
+            clearTimeout(retryTimeout);
+            retryTimeout = null;
+        }
+
+        // Puis on actualise normalement toutes les 10 minutes.
+        if (!refreshInterval) {
+            refreshInterval = setInterval(() => {
+            void loadWeather();
+            }, TEN_MINUTES);
+        }
+        } catch (error) {
+        if (isCancelled) {
+            return;
+        }
+
+        if (error instanceof Error && error.name === "AbortError") {
+            console.warn(
+            "Chargement météo interrompu ou trop long, nouvelle tentative..."
+            );
+        } else {
+            console.error(
+            "Impossible de charger la météo dans la TopBar :",
+            error
+            );
+        }
+
+        // En cas d'échec au démarrage, on retente rapidement
+        // au lieu d'attendre 10 minutes.
+        if (!retryTimeout) {
+            retryTimeout = setTimeout(() => {
+            retryTimeout = null;
+            void loadWeather();
+            }, 10_000);
+        }
+        } finally {
+        clearTimeout(requestTimeout);
+        isLoading = false;
+        }
     }
 
-    loadWeather();
+    function handleOnline() {
+        void loadWeather();
+    }
 
-    const weatherInterval = setInterval(loadWeather, TEN_MINUTES);
+    function handleVisibilityChange() {
+        if (document.visibilityState === "visible") {
+        void loadWeather();
+        }
+    }
+
+    void loadWeather();
+
+    window.addEventListener("online", handleOnline);
+    document.addEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+    );
 
     return () => {
-      isCancelled = true;
-      clearInterval(weatherInterval);
+        isCancelled = true;
+
+        currentController?.abort();
+
+        if (retryTimeout) {
+        clearTimeout(retryTimeout);
+        }
+
+        if (refreshInterval) {
+        clearInterval(refreshInterval);
+        }
+
+        window.removeEventListener("online", handleOnline);
+        document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+        );
     };
   }, [latitude, longitude]);
 
