@@ -155,21 +155,31 @@ export default function DashboardLayout() {
     const savedGoals = localStorage.getItem("lifeboard_goals");
     const savedSettings = localStorage.getItem("lifeboard_settings");
     
-    setOperations(savedOperations ? JSON.parse(savedOperations) : initialOperations);
-    setNetWorthSnapshots(savedSnapshots ? JSON.parse(savedSnapshots) : initialNetWorthSnapshots);
-console.log("savedBudgets raw:", savedBudgets);
+    const parsedOperations: Operation[] = savedOperations
+  ? JSON.parse(savedOperations)
+  : initialOperations;
 
-const parsedBudgets = savedBudgets
+const parsedSnapshots: NetWorthSnapshot[] = savedSnapshots
+  ? JSON.parse(savedSnapshots)
+  : initialNetWorthSnapshots;
+
+const parsedBudgets: Budget[] = savedBudgets
   ? JSON.parse(savedBudgets)
   : initialBudgets;
 
-console.log("parsedBudgets:", parsedBudgets);
-parsedBudgets.forEach((b) =>
-  console.log(b.name, b.type, b.linkedAccountId)
-);
+const parsedGoals: Goal[] = savedGoals
+  ? JSON.parse(savedGoals)
+  : initialGoals;
 
-setBudgets(parsedBudgets);    setGoals(savedGoals ? JSON.parse(savedGoals) : initialGoals);
-    setSettings(savedSettings ? JSON.parse(savedSettings) : initialSettings);
+const parsedSettings: AppSettings = savedSettings
+  ? JSON.parse(savedSettings)
+  : initialSettings;
+
+setOperations(parsedOperations);
+setNetWorthSnapshots(parsedSnapshots);
+setBudgets(parsedBudgets);
+setGoals(parsedGoals);
+setSettings(parsedSettings);
 
     setIsLoaded(true);
   }, []);
@@ -235,8 +245,8 @@ setBudgets(parsedBudgets);    setGoals(savedGoals ? JSON.parse(savedGoals) : ini
     budgets.find((budget) => budget.name === "Livret A")?.amount ?? 0;
 
   const livretImpact = operations.reduce((total, operation) => {
-    return total + (operation.accountImpact["Livret A"] ?? 0);
-  }, 0);
+  return total + (operation.accountImpact["livret-a"] ?? 0);
+}, 0);
 
   const currentLivretA = baseLivretA + livretImpact;
 
@@ -245,7 +255,6 @@ setBudgets(parsedBudgets);    setGoals(savedGoals ? JSON.parse(savedGoals) : ini
     0
   );
 
-  console.log(budgets);
 
   return (
     <main className="h-screen overflow-hidden bg-[#050b12] p-6 text-white">
