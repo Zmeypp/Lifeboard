@@ -139,7 +139,6 @@ updateProcess.unref();
      * Le script continue même lorsque Next.js
      * est arrêté pendant le redémarrage.
      */
-    updateProcess.unref();
 
     return NextResponse.json(
       {

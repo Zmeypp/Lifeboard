@@ -219,25 +219,68 @@ useEffect(() => {
   }, [settings.weatherLatitude, settings.weatherLongitude]);
 
   useEffect(() => {
-  const rebootWasInProgress =
-    window.localStorage.getItem(
-      REBOOT_STORAGE_KEY,
-    ) === "true";
+  const restoreRebootState = async () => {
+    const rebootWasInProgress =
+      window.localStorage.getItem(
+        REBOOT_STORAGE_KEY,
+      ) === "true";
 
-  if (!rebootWasInProgress) {
-    return;
-  }
+    if (!rebootWasInProgress) {
+      return;
+    }
 
-  setShowRebootConfirmation(true);
-  setIsRebooting(true);
+    try {
+      const response = await fetch(
+        `/api/system/reboot-status?t=${Date.now()}`,
+        {
+          method: "GET",
+          cache: "no-store",
+        },
+      );
 
-  setRebootProgress({
-    status: "rebooting",
-    progress: 100,
-    message:
-      "Le système va redémarrer dans un instant. Veuillez patienter.",
-    error: null,
-  });
+      if (!response.ok) {
+        throw new Error(
+          `Erreur HTTP ${response.status}`,
+        );
+      }
+
+      const data =
+        (await response.json()) as RebootProgress;
+
+      /*
+       * Le nouveau serveur est démarré :
+       * le redémarrage précédent est terminé.
+       */
+      if (data.status === "idle") {
+        window.localStorage.removeItem(
+          REBOOT_STORAGE_KEY,
+        );
+
+        return;
+      }
+
+      setShowRebootConfirmation(true);
+      setIsRebooting(true);
+      setRebootProgress(data);
+    } catch {
+      /*
+       * Le serveur est encore indisponible :
+       * on garde l'état de redémarrage.
+       */
+      setShowRebootConfirmation(true);
+      setIsRebooting(true);
+
+      setRebootProgress({
+        status: "rebooting",
+        progress: 100,
+        message:
+          "Le système va redémarrer dans un instant. Veuillez patienter.",
+        error: null,
+      });
+    }
+  };
+
+  void restoreRebootState();
 }, []);
 
 useEffect(() => {
@@ -269,6 +312,18 @@ useEffect(() => {
       }
 
       setRebootProgress(data);
+
+
+      if (data.status === "idle") {
+  window.localStorage.removeItem(
+    REBOOT_STORAGE_KEY,
+  );
+
+  setIsRebooting(false);
+  setShowRebootConfirmation(false);
+
+  return;
+}
 
       if (data.status === "error") {
         window.localStorage.removeItem(

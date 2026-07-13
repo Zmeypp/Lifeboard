@@ -183,32 +183,22 @@ CURRENT_PROGRESS=88
 write_status \
   "running" \
   "$CURRENT_PROGRESS" \
-  "Publication de la nouvelle version…"
+  "Préparation de la nouvelle version…"
 
-cd "$LIFEBOARD_DIR" ||
-  fail "Impossible de revenir dans le dossier LifeBoard."
+if [ ! -d "$BUILD_DIR/.next" ]; then
+  fail "Le dossier de compilation .next est introuvable."
+fi
 
-git reset --hard "origin/$BRANCH" ||
-  fail "Impossible de publier le nouveau code source."
-
-rm -rf "$LIFEBOARD_DIR/.next" ||
-  fail "Impossible de remplacer l'ancien build."
-
-cp -a "$BUILD_DIR/.next" "$LIFEBOARD_DIR/.next" ||
-  fail "Impossible de copier le nouveau build."
-
-rm -rf "$LIFEBOARD_DIR/node_modules" ||
-  fail "Impossible de remplacer les dépendances."
-
-cp -a "$BUILD_DIR/node_modules" "$LIFEBOARD_DIR/node_modules" ||
-  fail "Impossible de copier les dépendances."
+if [ ! -d "$BUILD_DIR/node_modules" ]; then
+  fail "Le dossier node_modules compilé est introuvable."
+fi
 
 CURRENT_PROGRESS=96
 
 write_status \
   "running" \
   "$CURRENT_PROGRESS" \
-  "Synchronisation des écritures disque…"
+  "Finalisation de la mise à jour…"
 
 sync
 
@@ -219,8 +209,14 @@ write_status \
   "$CURRENT_PROGRESS" \
   "Le système va redémarrer dans un instant. Veuillez patienter."
 
+# Indique au script de démarrage qu'une mise à jour
+# doit être publiée avant de lancer LifeBoard.
+touch "$BUILD_DIR/.lifeboard-update-ready" ||
+  fail "Impossible de marquer la mise à jour comme prête."
+
 sync
 
+# Laisse au navigateur plusieurs secondes pour afficher 100 %.
 sleep 5
 
 sudo /usr/sbin/reboot ||
