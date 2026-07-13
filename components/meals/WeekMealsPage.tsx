@@ -7,7 +7,11 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import QRCode from "react-qr-code";
-import { QrCode, X } from "lucide-react";
+import {
+  CircleHelp,
+  QrCode,
+  X,
+} from "lucide-react";
 import type { MealPlan } from "@/types/mealPlan";
 
 type GenerationStatus = {
@@ -32,6 +36,147 @@ type Props = {
   onUpdateMealPlan: (mealPlan: MealPlan) => void;
   generationStatus: GenerationStatus | null;
 };
+
+function getFriendlyGenerationError(
+  technicalError: string,
+) {
+  const normalizedError =
+    technicalError.toLowerCase();
+
+  if (
+    normalizedError.includes("429") ||
+    normalizedError.includes("quota") ||
+    normalizedError.includes("rate limit") ||
+    normalizedError.includes("resource_exhausted") ||
+    normalizedError.includes("limite")
+  ) {
+    return (
+      "Le service de génération est actuellement " +
+      "trop sollicité. Patientez quelques minutes " +
+      "avant de réessayer."
+    );
+  }
+
+  if (
+    normalizedError.includes("401") ||
+    normalizedError.includes("403") ||
+    normalizedError.includes("api key") ||
+    normalizedError.includes("clé api") ||
+    normalizedError.includes("permission_denied") ||
+    normalizedError.includes("unauthorized")
+  ) {
+    return (
+      "Le service de génération n’a pas pu être " +
+      "autorisé. La configuration de l’application " +
+      "doit être vérifiée."
+    );
+  }
+
+  if (
+    normalizedError.includes("gemini") ||
+    normalizedError.includes("generate_content") ||
+    normalizedError.includes("modèle")
+  ) {
+    return (
+      "Le planning des repas n’a pas pu être créé. " +
+      "Le service de génération de texte est " +
+      "temporairement indisponible."
+    );
+  }
+
+  if (
+    normalizedError.includes("pollinations") ||
+    normalizedError.includes("image") ||
+    normalizedError.includes(
+      "generate_images.py",
+    )
+  ) {
+    return (
+      "Le planning a été créé, mais certaines images " +
+      "des plats n’ont pas pu être générées."
+    );
+  }
+
+  if (
+    normalizedError.includes("json") ||
+    normalizedError.includes("planning incomplet") ||
+    normalizedError.includes("jours sur 7") ||
+    normalizedError.includes("champ days") ||
+    normalizedError.includes("shopping_list")
+  ) {
+    return (
+      "Le planning reçu était incomplet ou incorrect. " +
+      "Aucune modification n’a été publiée."
+    );
+  }
+
+  if (
+    normalizedError.includes("timeout") ||
+    normalizedError.includes("timed out") ||
+    normalizedError.includes("connection") ||
+    normalizedError.includes("network") ||
+    normalizedError.includes("connexion") ||
+    normalizedError.includes("dns")
+  ) {
+    return (
+      "La connexion au service de génération a " +
+      "échoué. Vérifiez la connexion Internet puis " +
+      "réessayez."
+    );
+  }
+
+  if (
+    normalizedError.includes("no such file") ||
+    normalizedError.includes("filenotfounderror") ||
+    normalizedError.includes("introuvable")
+  ) {
+    return (
+      "Un fichier nécessaire à la génération est " +
+      "introuvable. La configuration de l’application " +
+      "doit être vérifiée."
+    );
+  }
+
+  if (
+    normalizedError.includes("permissionerror") ||
+    normalizedError.includes("permission denied") ||
+    normalizedError.includes("access is denied")
+  ) {
+    return (
+      "L’application n’a pas l’autorisation de créer " +
+      "ou de publier les nouveaux fichiers."
+    );
+  }
+
+  if (
+    normalizedError.includes("charmap") ||
+    normalizedError.includes("codec") ||
+    normalizedError.includes("unicode")
+  ) {
+    return (
+      "Un problème de caractères a empêché la " +
+      "génération du planning."
+    );
+  }
+
+  if (
+    normalizedError.includes("module not found") ||
+    normalizedError.includes(
+      "modulenotfounderror",
+    ) ||
+    normalizedError.includes("no module named")
+  ) {
+    return (
+      "Un composant nécessaire à la génération n’est " +
+      "pas installé sur l’appareil."
+    );
+  }
+
+  return (
+    "Une erreur inattendue a interrompu la génération. " +
+    "L’ancien planning a été conservé."
+  );
+}
 
 export default function WeekMealsPage({
   mealPlan,
@@ -59,6 +204,12 @@ export default function WeekMealsPage({
     setRemainingRetrySeconds,
   ] = useState(0);
 
+
+  const [
+  showTechnicalGenerationError,
+  setShowTechnicalGenerationError,
+] = useState(false);
+
   const dragState = useRef({
     active: false,
     startY: 0,
@@ -66,22 +217,33 @@ export default function WeekMealsPage({
     moved: false,
   });
 
-  const displayedGenerationError =
-    generationError ??
-    generationStatus?.error ??
-    "Une erreur inconnue est survenue.";
+  const technicalGenerationError =
+  generationError ??
+  generationStatus?.error ??
+  "Aucun détail technique disponible.";
+
+const friendlyGenerationError =
+  getFriendlyGenerationError(
+    technicalGenerationError,
+  );
+
+const displayedGenerationError =
+  showTechnicalGenerationError
+    ? technicalGenerationError
+    : friendlyGenerationError;
 
   useEffect(() => {
-    if (
-      generationStatus?.status === "error" &&
-      generationStatus.error
-    ) {
-      setShowGenerationErrorPopup(true);
-    }
-  }, [
-    generationStatus?.status,
-    generationStatus?.error,
-  ]);
+  if (
+    generationStatus?.status === "error" &&
+    generationStatus.error
+  ) {
+    setShowTechnicalGenerationError(false);
+    setShowGenerationErrorPopup(true);
+  }
+}, [
+  generationStatus?.status,
+  generationStatus?.error,
+]);
 
   useEffect(() => {
     if (
@@ -201,53 +363,55 @@ export default function WeekMealsPage({
   };
 
   const generateNewWeek = async () => {
-    if (
-      generationStatus?.isGenerating ||
-      isRequestingGeneration
-    ) {
-      return;
-    }
+  if (
+    generationStatus?.isGenerating ||
+    isRequestingGeneration
+  ) {
+    return;
+  }
 
-    setGenerationError(null);
-    setShowGenerationErrorPopup(false);
-    setIsRequestingGeneration(true);
+  setGenerationError(null);
+  setShowGenerationErrorPopup(false);
+  setShowTechnicalGenerationError(false);
+  setIsRequestingGeneration(true);
 
-    try {
-      const response = await fetch(
-        "/api/meals/generate",
-        {
-          method: "POST",
-        },
+  try {
+    const response = await fetch(
+      "/api/meals/generate",
+      {
+        method: "POST",
+      },
+    );
+
+    const data = await response
+      .json()
+      .catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(
+        data?.error ??
+          data?.message ??
+          `Erreur HTTP ${response.status}`,
       );
-
-      const data = await response
-        .json()
-        .catch(() => null);
-
-      if (!response.ok) {
-        throw new Error(
-          data?.error ??
-            data?.message ??
-            `Erreur HTTP ${response.status}`,
-        );
-      }
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Une erreur inconnue est survenue.";
-
-      console.error(
-        "Erreur pendant la génération :",
-        error,
-      );
-
-      setGenerationError(message);
-      setShowGenerationErrorPopup(true);
-    } finally {
-      setIsRequestingGeneration(false);
     }
-  };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Une erreur inconnue est survenue.";
+
+    console.error(
+      "Erreur pendant la génération :",
+      error,
+    );
+
+    setGenerationError(message);
+    setShowTechnicalGenerationError(false);
+    setShowGenerationErrorPopup(true);
+  } finally {
+    setIsRequestingGeneration(false);
+  }
+};
 
   if (generationStatus?.isGenerating) {
     const isWaiting =
@@ -317,11 +481,58 @@ export default function WeekMealsPage({
           </p>
 
           {(generationError ||
-            generationStatus?.error) && (
-            <div className="mt-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-300">
-              {displayedGenerationError}
-            </div>
-          )}
+  generationStatus?.error) && (
+  <div
+    className="
+      mt-6 flex items-start gap-4 rounded-xl
+      border border-red-400/30 bg-red-500/10
+      p-4 text-left text-red-300
+    "
+  >
+    <div
+      className={`
+        min-w-0 flex-1
+        ${
+          showTechnicalGenerationError
+            ? "max-h-40 overflow-y-auto whitespace-pre-wrap break-words font-mono text-sm"
+            : ""
+        }
+      `}
+    >
+      {displayedGenerationError}
+    </div>
+
+    <button
+      type="button"
+      onPointerUp={(event) => {
+        event.stopPropagation();
+
+        setShowTechnicalGenerationError(
+          (currentValue) => !currentValue,
+        );
+      }}
+      onClick={(event) => {
+        if (event.detail === 0) {
+          setShowTechnicalGenerationError(
+            (currentValue) => !currentValue,
+          );
+        }
+      }}
+      className="
+        flex h-10 w-10 shrink-0 items-center
+        justify-center rounded-full border
+        border-red-300/30 bg-red-300/10
+        active:bg-red-300/20
+      "
+      style={{
+        touchAction: "none",
+      }}
+      aria-label="Afficher le détail de l’erreur"
+    >
+      <CircleHelp size={23} />
+    </button>
+  </div>
+)}
 
           <button
             type="button"
@@ -613,9 +824,73 @@ export default function WeekMealsPage({
                 affiché.
               </p>
 
-              <div className="mt-5 max-h-48 overflow-y-auto rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-red-200">
-                {displayedGenerationError}
-              </div>
+              <div
+  className="
+    mt-5 rounded-xl border border-red-400/20
+    bg-red-500/10 text-red-200
+  "
+>
+  <div className="flex items-start gap-4 p-4">
+    <div
+      className={`
+        min-w-0 flex-1
+        ${
+          showTechnicalGenerationError
+            ? "max-h-48 overflow-y-auto whitespace-pre-wrap break-words font-mono text-sm"
+            : "text-base leading-relaxed"
+        }
+      `}
+    >
+      {displayedGenerationError}
+    </div>
+
+    <button
+      type="button"
+      onPointerUp={(event) => {
+        event.stopPropagation();
+
+        setShowTechnicalGenerationError(
+          (currentValue) => !currentValue,
+        );
+      }}
+      onClick={(event) => {
+        if (event.detail === 0) {
+          setShowTechnicalGenerationError(
+            (currentValue) => !currentValue,
+          );
+        }
+      }}
+      className="
+        relative z-10 flex h-10 w-10 shrink-0
+        items-center justify-center rounded-full
+        border border-red-300/30 bg-red-300/10
+        text-red-100
+        active:bg-red-300/20
+      "
+      style={{
+        touchAction: "none",
+      }}
+      aria-label={
+        showTechnicalGenerationError
+          ? "Afficher le message simplifié"
+          : "Afficher le détail technique"
+      }
+      title={
+        showTechnicalGenerationError
+          ? "Afficher le message simplifié"
+          : "Afficher le détail technique"
+      }
+    >
+      <CircleHelp size={23} />
+    </button>
+  </div>
+
+  {showTechnicalGenerationError && (
+    <div className="border-t border-red-400/15 px-4 py-3 text-xs text-red-200/70">
+      Détail technique destiné au diagnostic
+    </div>
+  )}
+</div>
 
               <div className="mt-7 flex gap-4">
                 <button

@@ -4,6 +4,19 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from datetime import datetime, timezone
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(
+        encoding="utf-8",
+        errors="replace",
+    )
+
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(
+        encoding="utf-8",
+        errors="replace",
+    )
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 SCRIPTS_DIR = ROOT_DIR / "scripts"
@@ -42,6 +55,7 @@ def write_status(
     status: str = "idle",
     error: str | None = None,
 ):
+    
     generation_status = {
         "isGenerating": is_generating,
         "status": status,
@@ -50,6 +64,9 @@ def write_status(
         "images": images,
         "imagesMax": 7,
         "error": error,
+        "updatedAt": datetime.now(
+            timezone.utc
+        ).isoformat(),
     }
 
     temporary_status_file = STATUS_FILE.with_suffix(
@@ -89,15 +106,46 @@ def clear_directory(path: Path):
 def run_script(script_name: str):
     script_path = SCRIPTS_DIR / script_name
 
+    environment = os.environ.copy()
+    environment["PYTHONUTF8"] = "1"
+    environment["PYTHONIOENCODING"] = "utf-8"
+
     result = subprocess.run(
         [sys.executable, str(script_path)],
         cwd=ROOT_DIR,
         text=True,
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+        env=environment,
     )
 
+    stdout = result.stdout.strip()
+    stderr = result.stderr.strip()
+
+    if stdout:
+        print(
+            stdout,
+            flush=True,
+        )
+
+    if stderr:
+        print(
+            stderr,
+            file=sys.stderr,
+            flush=True,
+        )
+
     if result.returncode != 0:
+        details = (
+            stderr
+            or stdout
+            or "Aucun détail fourni par le script."
+        )
+
         raise RuntimeError(
-            f"Erreur pendant l'exécution de {script_name}"
+            f"Erreur pendant l'exécution de "
+            f"{script_name} :\n{details}"
         )
 
 

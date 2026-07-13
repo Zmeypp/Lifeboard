@@ -1,8 +1,60 @@
 import { NextResponse } from "next/server";
 import { spawn } from "child_process";
 import path from "path";
+import fs from "fs";
 
 let isRunning = false;
+
+const statusFilePath = path.join(
+  process.cwd(),
+  "scripts",
+  "generation_status.json",
+);
+
+function resetAbandonedGenerationStatus() {
+  try {
+    if (!fs.existsSync(statusFilePath)) {
+      return;
+    }
+
+    const rawStatus = fs.readFileSync(
+      statusFilePath,
+      "utf-8",
+    );
+
+    const status = JSON.parse(rawStatus);
+
+    if (
+      status.isGenerating === true ||
+      status.status === "running" ||
+      status.status === "waiting"
+    ) {
+      const resetStatus = {
+        isGenerating: false,
+        status: "error",
+        mealPlan: status.mealPlan ?? 0,
+        mealPlanMax: status.mealPlanMax ?? 1,
+        images: status.images ?? 0,
+        imagesMax: status.imagesMax ?? 7,
+        error:
+          "La génération précédente a été interrompue par l’arrêt de l’application.",
+        waitReason: null,
+        retryAt: null,
+      };
+
+      fs.writeFileSync(
+        statusFilePath,
+        JSON.stringify(resetStatus, null, 2),
+        "utf-8",
+      );
+    }
+  } catch (error) {
+    console.error(
+      "[meal-generator-status-reset-error]",
+      error,
+    );
+  }
+}
 
 export async function POST() {
   if (isRunning) {
