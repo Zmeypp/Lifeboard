@@ -75,24 +75,28 @@ fi
 echo ""
 echo "Installation propre des dépendances..."
 
+rm -rf node_modules .next
+
 if [ -f "package-lock.json" ]; then
-  npm ci --no-audit --no-fund ||
+  env \
+    -u NODE_ENV \
+    -u NPM_CONFIG_PRODUCTION \
+    -u NPM_CONFIG_OMIT \
+    npm ci --include=dev --no-audit --no-fund ||
     fail "Échec de npm ci."
-
-  echo ""
-  echo "Complément d'installation des dépendances..."
-
-  npm install --no-audit --no-fund ||
-    fail "Échec de npm install."
 else
-  npm install --no-audit --no-fund ||
+  env \
+    -u NODE_ENV \
+    -u NPM_CONFIG_PRODUCTION \
+    -u NPM_CONFIG_OMIT \
+    npm install --include=dev --no-audit --no-fund ||
     fail "Échec de npm install."
 fi
 
 echo ""
 echo "Compilation de LifeBoard..."
 
-npm run build ||
+NODE_ENV=production npm run build ||
   fail "Échec de npm run build."
 
 echo ""
