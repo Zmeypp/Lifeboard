@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -180,6 +181,7 @@ function getFriendlyGenerationError(
 
 export default function WeekMealsPage({
   mealPlan,
+  onUpdateMealPlan,
   generationStatus,
 }: Props) {
   const [showQr, setShowQr] = useState(false);
@@ -361,6 +363,49 @@ const displayedGenerationError =
       );
     }
   };
+
+  const reloadMealPlan = useCallback(async () => {
+  try {
+    const response = await fetch(
+      `/data/lifeboard_meal_plan.json?t=${Date.now()}`,
+      {
+        method: "GET",
+        cache: "no-store",
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `Impossible de charger le planning : HTTP ${response.status}`,
+      );
+    }
+
+    const newMealPlan =
+      (await response.json()) as MealPlan;
+
+    onUpdateMealPlan(newMealPlan);
+  } catch (error) {
+    console.error(
+      "Erreur pendant le rechargement du planning :",
+      error,
+    );
+  }
+}, [onUpdateMealPlan]);
+
+useEffect(() => {
+  void reloadMealPlan();
+}, [reloadMealPlan]);
+
+useEffect(() => {
+  if (generationStatus?.status !== "success") {
+    return;
+  }
+
+  void reloadMealPlan();
+}, [
+  generationStatus?.status,
+  reloadMealPlan,
+]);
 
   const generateNewWeek = async () => {
   if (
