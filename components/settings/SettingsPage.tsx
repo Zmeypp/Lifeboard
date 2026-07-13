@@ -43,6 +43,17 @@ type UpdateStatus = {
   message?: string;
 };
 
+type RebootProgress = {
+  status:
+    | "idle"
+    | "running"
+    | "rebooting"
+    | "error";
+  progress: number;
+  message: string;
+  error: string | null;
+};
+
 export default function SettingsPage({
   settings,
   onUpdateSettings,
@@ -83,6 +94,14 @@ const [isCheckingUpdate, setIsCheckingUpdate] =
 
 const [updateCheckError, setUpdateCheckError] =
   useState<string | null>(null);
+
+  const [rebootProgress, setRebootProgress] =
+  useState<RebootProgress>({
+    status: "idle",
+    progress: 0,
+    message: "Préparation…",
+    error: null,
+  });
 
 const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -195,6 +214,68 @@ useEffect(() => {
       String(settings.weatherLongitude).replace(".", ","),
     );
   }, [settings.weatherLatitude, settings.weatherLongitude]);
+
+  useEffect(() => {
+  if (!isRebooting) {
+    return;
+  }
+
+  let isCancelled = false;
+
+  const loadProgress = async () => {
+    try {
+      const response = await fetch(
+        `/api/system/reboot-status?t=${Date.now()}`,
+        {
+          method: "GET",
+          cache: "no-store",
+        },
+      );
+
+      if (!response.ok) {
+        return;
+      }
+
+      const data =
+        (await response.json()) as RebootProgress;
+
+      if (isCancelled) {
+        return;
+      }
+
+      setRebootProgress(data);
+
+      if (data.status === "error") {
+        setRebootError(
+          data.error ??
+            "La mise à jour a échoué.",
+        );
+
+        setIsRebooting(false);
+      }
+    } catch {
+      /*
+       * Pendant le véritable redémarrage, la route
+       * devient naturellement inaccessible.
+       * On conserve donc la popup affichée.
+       */
+    }
+  };
+
+  void loadProgress();
+
+  const intervalId = window.setInterval(
+    () => {
+      void loadProgress();
+    },
+    1000,
+  );
+
+  return () => {
+    isCancelled = true;
+    window.clearInterval(intervalId);
+  };
+}, [isRebooting]);
 
   function update<K extends keyof AppSettings>(
     key: K,
@@ -384,6 +465,13 @@ useEffect(() => {
   setIsRebooting(true);
   setRebootError(null);
 
+  setRebootProgress({
+    status: "running",
+    progress: 1,
+    message: "Lancement de la mise à jour…",
+    error: null,
+  });
+
   try {
     const response = await fetch(
       "/api/system/reboot",
@@ -402,12 +490,6 @@ useEffect(() => {
           `Erreur HTTP ${response.status}`,
       );
     }
-
-    /*
-     * On laisse la fenêtre ouverte sur l'écran
-     * de redémarrage. La connexion sera ensuite
-     * naturellement interrompue.
-     */
   } catch (error) {
     const message =
       error instanceof Error
@@ -421,6 +503,13 @@ useEffect(() => {
 
     setRebootError(message);
     setIsRebooting(false);
+
+    setRebootProgress({
+      status: "error",
+      progress: 0,
+      message: "La mise à jour a échoué.",
+      error: message,
+    });
   }
 }
 
@@ -853,25 +942,75 @@ useEffect(() => {
       </div>
 
       {isRebooting ? (
-        <div className="mt-6 text-center">
-          <div className="mx-auto mb-6 h-12 w-12 animate-spin rounded-full border-4 border-red-400 border-t-transparent" />
+  <div className="mt-6">
+    <div className="text-center">
+      <div className="mx-auto mb-6 h-12 w-12 animate-spin rounded-full border-4 border-red-400 border-t-transparent" />
 
-          <p className="text-xl font-bold">
-            Mise à jour en cours…
-          </p>
+      <p className="text-xl font-bold">
+        {rebootProgress.status === "rebooting"
+          ? "Redémarrage en cours…"
+          : "Mise à jour en cours…"}
+      </p>
 
-          <p className="mt-3 text-slate-400">
-            LifeBoard récupère les modifications,
-            compile l’application puis redémarre le
-            Raspberry Pi.
-          </p>
+      <p className="mt-3 min-h-12 text-slate-400">
+        {rebootProgress.message}
+      </p>
+    </div>
 
-          <p className="mt-4 text-sm text-slate-500">
-            L’écran peut devenir temporairement
-            inaccessible.
-          </p>
-        </div>
-      ) : (
+    <div className="mt-7">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-sm font-medium text-slate-400">
+          Progression
+        </span>
+
+        <span className="text-lg font-bold text-red-300">
+          {Math.max(
+            0,
+            Math.min(100, rebootProgress.progress),
+          )}
+          %
+        </span>
+      </div>
+
+      <div className="h-4 overflow-hidden rounded-full bg-white/10">
+        <div
+          className="
+            h-full rounded-full bg-red-500
+            transition-[width] duration-500 ease-out
+          "
+          style={{
+            width: `${Math.max(
+              0,
+              Math.min(
+                100,
+                rebootProgress.progress,
+              ),
+            )}%`,
+          }}
+        />
+      </div>
+    </div>
+
+    {rebootProgress.status === "rebooting" ? (
+      <p className="mt-5 text-center text-sm text-amber-300">
+        Le Raspberry Pi redémarre. Cette fenêtre
+        restera affichée jusqu’au rechargement de
+        LifeBoard.
+      </p>
+    ) : (
+      <p className="mt-5 text-center text-sm text-slate-500">
+        N’éteignez pas le Raspberry Pi et ne fermez
+        pas cette fenêtre.
+      </p>
+    )}
+
+    {rebootError && (
+      <div className="mt-5 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-300">
+        {rebootError}
+      </div>
+    )}
+  </div>
+) : (
         <>
           <p className="mt-6 text-slate-300">
             Les commandes suivantes seront exécutées :
