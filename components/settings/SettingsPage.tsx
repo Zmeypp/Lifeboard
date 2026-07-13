@@ -720,7 +720,7 @@ useEffect(() => {
     updateStatus &&
     !updateStatus.updateAvailable && (
       <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm font-medium text-emerald-300">
-        LifeBoard est à jour. TEST TEST TEST
+        LifeBoard est à jour.
       </div>
     )}
 
@@ -878,9 +878,11 @@ useEffect(() => {
           </p>
 
           <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-4 font-mono text-sm text-slate-300">
-            <div>git pull --ff-only</div>
-            <div>npm run build</div>
-            <div>sudo reboot</div>
+            <div>git fetch origin</div>
+<div>git reset --hard origin/[branche]</div>
+<div>npm ci</div>
+<div>npm run build</div>
+<div>sudo reboot</div>
           </div>
 
           <p className="mt-4 text-sm text-amber-300">

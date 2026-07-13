@@ -39,3 +39,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Données locales des plats
+lifeboard_meal_plan.json
+scripts/generation_status.json
+
+# Images générées localement
+images/
+public/images/meals/
+
+# Données locales des plats
+public/data/lifeboard_meal_plan.json
+scripts/generation_status.json
+
+# Images générées localement
+public/images/

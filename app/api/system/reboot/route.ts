@@ -67,7 +67,9 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const projectDirectory = process.cwd();
+  const projectDirectory =
+  process.env.LIFEBOARD_DIR ??
+  "/home/lifeboard/Desktop/Lifeboard";
 
   const scriptPath = path.join(
     projectDirectory,
@@ -106,13 +108,32 @@ export async function POST(request: NextRequest) {
     );
 
     updateProcess.once("error", (error) => {
-      isUpdating = false;
+  isUpdating = false;
 
+  console.error(
+    "[lifeboard-update-spawn-error]",
+    error,
+  );
+});
+
+updateProcess.once(
+  "exit",
+  (code, signal) => {
+    if (code !== 0) {
       console.error(
-        "[lifeboard-update-spawn-error]",
-        error,
+        "[lifeboard-update-exit-error]",
+        {
+          code,
+          signal,
+        },
       );
-    });
+    }
+
+    isUpdating = false;
+  },
+);
+
+updateProcess.unref();
 
     /*
      * Le script continue même lorsque Next.js
