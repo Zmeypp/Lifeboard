@@ -68,18 +68,22 @@ else
   echo ""
   echo "Alignement du Raspberry sur origin/$BRANCH..."
 
-  # Le Raspberry est une machine de déploiement :
-  # sa copie locale doit refléter le dépôt distant.
   git reset --hard "origin/$BRANCH" ||
     fail "Impossible d'aligner le dépôt local."
 fi
 
 echo ""
-echo "Installation des dépendances..."
+echo "Installation propre des dépendances..."
 
 if [ -f "package-lock.json" ]; then
   npm ci --no-audit --no-fund ||
     fail "Échec de npm ci."
+
+  echo ""
+  echo "Complément d'installation des dépendances..."
+
+  npm install --no-audit --no-fund ||
+    fail "Échec de npm install."
 else
   npm install --no-audit --no-fund ||
     fail "Échec de npm install."
