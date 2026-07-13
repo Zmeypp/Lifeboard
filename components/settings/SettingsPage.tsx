@@ -6,7 +6,11 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { Power, X } from "lucide-react";
+import {
+  Power,
+  TriangleAlert,
+  X,
+} from "lucide-react";
 import type { AppSettings } from "@/data/settings";
 import type { Budget } from "@/data/budgets";
 import type { Operation } from "@/data/operations";
@@ -29,6 +33,14 @@ type SettingsPageProps = {
     goals?: Goal[];
     netWorthSnapshots?: NetWorthSnapshot[];
   }) => void;
+};
+
+type UpdateStatus = {
+  updateAvailable: boolean;
+  branch?: string;
+  behindCount?: number;
+  aheadCount?: number;
+  message?: string;
 };
 
 export default function SettingsPage({
@@ -62,6 +74,15 @@ const [
   rebootError,
   setRebootError,
 ] = useState<string | null>(null);
+
+const [updateStatus, setUpdateStatus] =
+  useState<UpdateStatus | null>(null);
+
+const [isCheckingUpdate, setIsCheckingUpdate] =
+  useState(true);
+
+const [updateCheckError, setUpdateCheckError] =
+  useState<string | null>(null);
 
 const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -152,6 +173,18 @@ const handlePointerEnd = (
     container.releasePointerCapture(event.pointerId);
   }
 };
+
+useEffect(() => {
+  void checkForUpdates();
+
+  const interval = window.setInterval(() => {
+    void checkForUpdates();
+  }, 10 * 60 * 1000);
+
+  return () => {
+    window.clearInterval(interval);
+  };
+}, []);
 
   useEffect(() => {
     setLatitudeInput(
@@ -299,6 +332,49 @@ const handlePointerEnd = (
 
     reader.readAsText(file);
   }
+
+  async function checkForUpdates() {
+  setIsCheckingUpdate(true);
+  setUpdateCheckError(null);
+
+  try {
+    const response = await fetch(
+      "/api/system/update-status",
+      {
+        method: "GET",
+        cache: "no-store",
+      },
+    );
+
+    const data = await response
+      .json()
+      .catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(
+        data?.message ??
+          `Erreur HTTP ${response.status}`,
+      );
+    }
+
+    setUpdateStatus(data);
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Impossible de vérifier les mises à jour.";
+
+    console.error(
+      "Erreur pendant la vérification des mises à jour :",
+      error,
+    );
+
+    setUpdateCheckError(message);
+    setUpdateStatus(null);
+  } finally {
+    setIsCheckingUpdate(false);
+  }
+}
 
   async function updateAndReboot() {
   if (isRebooting) {
@@ -603,6 +679,79 @@ const handlePointerEnd = (
     Raspberry Pi.
   </p>
 
+  {isCheckingUpdate && (
+    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-4 text-slate-300">
+      <div className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+
+      <span className="text-sm font-medium">
+        Vérification des mises à jour…
+      </span>
+    </div>
+  )}
+
+  {!isCheckingUpdate &&
+    updateStatus?.updateAvailable && (
+      <div className="flex items-start gap-3 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4 text-amber-300">
+        <TriangleAlert
+          size={24}
+          className="mt-0.5 shrink-0"
+        />
+
+        <div>
+          <p className="font-bold">
+            Des mises à jour de l’application sont
+            disponibles
+          </p>
+
+          {typeof updateStatus.behindCount ===
+            "number" &&
+            updateStatus.behindCount > 0 && (
+              <p className="mt-1 text-sm text-amber-200/75">
+                {updateStatus.behindCount === 1
+                  ? "1 modification distante est disponible."
+                  : `${updateStatus.behindCount} modifications distantes sont disponibles.`}
+              </p>
+            )}
+        </div>
+      </div>
+    )}
+
+  {!isCheckingUpdate &&
+    updateStatus &&
+    !updateStatus.updateAvailable && (
+      <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm font-medium text-emerald-300">
+        LifeBoard est à jour.
+      </div>
+    )}
+
+  {updateCheckError && (
+    <div className="rounded-xl border border-amber-400/20 bg-amber-500/10 p-4">
+      <p className="text-sm text-amber-300">
+        Impossible de vérifier automatiquement les
+        mises à jour.
+      </p>
+
+      <button
+        type="button"
+        onPointerUp={(event) => {
+          event.stopPropagation();
+          void checkForUpdates();
+        }}
+        onClick={(event) => {
+          if (event.detail === 0) {
+            void checkForUpdates();
+          }
+        }}
+        className="mt-3 rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-sm font-bold text-amber-200 active:bg-amber-500/20"
+        style={{
+          touchAction: "none",
+        }}
+      >
+        Réessayer
+      </button>
+    </div>
+  )}
+
   {rebootError && (
     <div className="rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-300">
       {rebootError}
@@ -627,22 +776,33 @@ const handlePointerEnd = (
         setShowRebootConfirmation(true);
       }
     }}
-    className="
+    className={`
       flex w-full items-center justify-center gap-3
-      rounded-xl bg-red-600 px-5 py-4
-      font-bold text-white active:bg-red-700
+      rounded-xl px-5 py-4
+      font-bold text-white
       disabled:cursor-not-allowed
       disabled:opacity-50
-    "
+      ${
+        updateStatus?.updateAvailable
+          ? "bg-amber-600 active:bg-amber-700"
+          : "bg-red-600 active:bg-red-700"
+      }
+    `}
     style={{
       touchAction: "none",
     }}
   >
-    <Power size={22} />
+    {updateStatus?.updateAvailable ? (
+      <TriangleAlert size={22} />
+    ) : (
+      <Power size={22} />
+    )}
 
     {isRebooting
       ? "Mise à jour en cours..."
-      : "Mettre à jour et redémarrer"}
+      : updateStatus?.updateAvailable
+        ? "Installer la mise à jour et redémarrer"
+        : "Mettre à jour et redémarrer"}
   </button>
 </Section>
       </div>
