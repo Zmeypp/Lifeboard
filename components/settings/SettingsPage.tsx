@@ -720,7 +720,7 @@ useEffect(() => {
     updateStatus &&
     !updateStatus.updateAvailable && (
       <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm font-medium text-emerald-300">
-        LifeBoard est à jour.
+        LifeBoard est à jour. TEST TEST TEST
       </div>
     )}
 
