@@ -124,21 +124,17 @@ if [ -f "$UPDATE_READY_FILE" ]; then
   }
 
   echo "Publication de origin/$BRANCH..." \
-    >> "$LOG_DIR/startup.log"
+  >> "$LOG_DIR/startup.log"
 
-  git fetch --prune origin \
-    >> "$LOG_DIR/startup.log" 2>&1 || {
-      echo "ERREUR : échec de git fetch." \
-        >> "$LOG_DIR/startup.log"
-      exit 1
-    }
-
-  git reset --hard "origin/$BRANCH" \
-    >> "$LOG_DIR/startup.log" 2>&1 || {
-      echo "ERREUR : échec de git reset." \
-        >> "$LOG_DIR/startup.log"
-      exit 1
-    }
+# Le git fetch a déjà été réalisé par update_and_reboot.sh
+# avant le redémarrage. Il ne faut pas dépendre du réseau
+# pendant le démarrage du Raspberry Pi.
+git reset --hard "origin/$BRANCH" \
+  >> "$LOG_DIR/startup.log" 2>&1 || {
+    echo "ERREUR : échec de git reset sur origin/$BRANCH." \
+      >> "$LOG_DIR/startup.log"
+    exit 1
+  }
 
   rm -rf "$LIFEBOARD_DIR/.next"
   rm -rf "$LIFEBOARD_DIR/node_modules"
@@ -220,7 +216,7 @@ echo "Attente de $LIFEBOARD_URL..." >> "$LOG_DIR/startup.log"
 
 LIFEBOARD_READY=false
 
-for attempt in $(seq 1 100); do
+for attempt in $(seq 1 300); do
   if curl --silent --fail --output /dev/null "$LIFEBOARD_URL"; then
     LIFEBOARD_READY=true
 

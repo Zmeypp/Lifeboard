@@ -108,6 +108,10 @@ const [updateCheckError, setUpdateCheckError] =
 
 const scrollRef = useRef<HTMLDivElement>(null);
 
+
+const hasSeenActiveRebootStatusRef =
+  useRef(false);
+
 const dragState = useRef({
   active: false,
   startY: 0,
@@ -311,10 +315,31 @@ useEffect(() => {
         return;
       }
 
-      setRebootProgress(data);
+      /*
+ * Le premier appel peut encore retourner l'ancien
+ * statut "idle", juste avant que le script Bash
+ * écrive son premier statut "running".
+ */
+if (
+  data.status === "running" ||
+  data.status === "rebooting"
+) {
+  hasSeenActiveRebootStatusRef.current = true;
+}
 
+if (
+  data.status === "idle" &&
+  !hasSeenActiveRebootStatusRef.current
+) {
+  return;
+}
 
-      if (data.status === "idle") {
+setRebootProgress(data);
+
+if (
+  data.status === "idle" &&
+  hasSeenActiveRebootStatusRef.current
+) {
   window.localStorage.removeItem(
     REBOOT_STORAGE_KEY,
   );
@@ -555,6 +580,8 @@ useEffect(() => {
   if (isRebooting) {
     return;
   }
+
+  hasSeenActiveRebootStatusRef.current = false;
 
   window.localStorage.setItem(
     REBOOT_STORAGE_KEY,
