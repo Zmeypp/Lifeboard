@@ -157,8 +157,18 @@ export default function DashboardLayout() {
     
     setOperations(savedOperations ? JSON.parse(savedOperations) : initialOperations);
     setNetWorthSnapshots(savedSnapshots ? JSON.parse(savedSnapshots) : initialNetWorthSnapshots);
-    setBudgets(savedBudgets ? JSON.parse(savedBudgets) : initialBudgets);
-    setGoals(savedGoals ? JSON.parse(savedGoals) : initialGoals);
+console.log("savedBudgets raw:", savedBudgets);
+
+const parsedBudgets = savedBudgets
+  ? JSON.parse(savedBudgets)
+  : initialBudgets;
+
+console.log("parsedBudgets:", parsedBudgets);
+parsedBudgets.forEach((b) =>
+  console.log(b.name, b.type, b.linkedAccountId)
+);
+
+setBudgets(parsedBudgets);    setGoals(savedGoals ? JSON.parse(savedGoals) : initialGoals);
     setSettings(savedSettings ? JSON.parse(savedSettings) : initialSettings);
 
     setIsLoaded(true);
@@ -234,6 +244,8 @@ export default function DashboardLayout() {
     currentLivretA - settings.livretASafetyAmount,
     0
   );
+
+  console.log(budgets);
 
   return (
     <main className="h-screen overflow-hidden bg-[#050b12] p-6 text-white">

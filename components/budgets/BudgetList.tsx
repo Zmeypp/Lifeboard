@@ -37,64 +37,104 @@ export default function BudgetList({ budgets, operations, settings, }: BudgetLis
   return (
     <div className="space-y-4">
       {budgets.map((budget) => {
-        const budgetImpact = currentCycleOperations.reduce((total, operation) => {
-          return total + (operation.budgetImpact[budget.name as keyof typeof operation.budgetImpact] ?? 0);
-        }, 0);
+  const budgetImpact =
+    currentCycleOperations.reduce(
+      (total, operation) =>
+        total +
+        (operation.budgetImpact[budget.id] ?? 0),
+      0,
+    );
 
-        const accountImpact = currentCycleOperations.reduce((total, operation) => {
-          return total + (operation.accountImpact[budget.name as keyof typeof operation.accountImpact] ?? 0);
-        }, 0);
+  const accountImpact =
+    currentCycleOperations.reduce(
+      (total, operation) =>
+        total +
+        (operation.accountImpact[budget.id] ?? 0),
+      0,
+    );
 
-        const remaining = Math.max(budget.amount + budgetImpact + accountImpact, 0);
-        const max =
-          budget.name === "Livret A"
-            ? settings.livretASafetyAmount
-            : budget.max;
-          const percent =
-            max > 0 ? Math.min(Math.round((remaining / max) * 100), 100) : 0;
+  /*
+   * Un compte lit accountImpact.
+   * Un budget de dépense lit budgetImpact.
+   *
+   * On ne mélange plus les deux sur le même budget.
+   */
+  const operationImpact =
+    budget.type === "account"
+      ? accountImpact
+      : budgetImpact;
 
-        return (
-          <div
-            key={budget.name}
-            className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
+  const remaining = Math.max(
+    budget.amount + operationImpact,
+    0,
+  );
+
+  const max =
+    budget.id === "livret-a"
+      ? settings.livretASafetyAmount
+      : budget.max;
+
+  const percent =
+    max > 0
+      ? Math.min(
+          Math.round((remaining / max) * 100),
+          100,
+        )
+      : 0;
+
+  return (
+  <div
+    key={budget.id}
+    className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
+  >
+    <div className="flex items-center gap-4">
+      <div
+        className={`flex h-12 w-12 items-center justify-center rounded-xl text-2xl ${
+          colors[budget.color]
+        }`}
+      >
+        {budget.icon}
+      </div>
+
+      <div className="flex-1">
+        <div className="flex items-center justify-between">
+          <p
+            className={`text-sm font-semibold ${
+              colors[budget.color].split(" ")[0]
+            }`}
           >
-            <div className="flex items-center gap-4">
-              <div
-                className={`flex h-12 w-12 items-center justify-center rounded-xl text-2xl ${
-                  colors[budget.color]
-                }`}
-              >
-                {budget.icon}
-              </div>
+            {budget.name}
+          </p>
 
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <p className={`text-sm font-semibold ${colors[budget.color].split(" ")[0]}`}>
-                    {budget.name}
-                  </p>
-                  <p className="text-sm text-slate-400">{percent}%</p>
-                </div>
+          <p className="text-sm text-slate-400">
+            {percent}%
+          </p>
+        </div>
 
-                <p className={`mt-1 text-2xl font-bold ${colors[budget.color].split(" ")[0]}`}>
-                  {remaining.toLocaleString("fr-FR")} €
-                </p>
+        <p
+          className={`mt-1 text-2xl font-bold ${
+            colors[budget.color].split(" ")[0]
+          }`}
+        >
+          {remaining.toLocaleString("fr-FR")} €
+        </p>
 
-                <div className="mt-3 h-1.5 rounded-full bg-white/10">
-                  <motion.div
-  className={`h-full rounded-full ${bars[budget.color]}`}
-  initial={{ width: 0 }}
-  animate={{ width: `${percent}%` }}
-  transition={{
-    duration: 0.8,
-    ease: "easeOut",
-  }}
-/>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })}
+        <div className="mt-3 h-1.5 rounded-full bg-white/10">
+          <motion.div
+            className={`h-full rounded-full ${bars[budget.color]}`}
+            initial={{ width: 0 }}
+            animate={{ width: `${percent}%` }}
+            transition={{
+              duration: 0.8,
+              ease: "easeOut",
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+);
+})}
     </div>
   );
 }

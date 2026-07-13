@@ -1,5 +1,4 @@
-export type Account = "Compte courant" | "Livret A";
-export type BudgetName = "Courses" | "Essence" | "Loisirs";
+export type BudgetImpacts = Record<string, number>;
 
 export type Operation = {
   id: number;
@@ -11,8 +10,25 @@ export type Operation = {
   amount: number;
   color: string;
   icon: string;
-  accountImpact: Partial<Record<Account, number>>;
-  budgetImpact: Partial<Record<BudgetName, number>>;
+
+  /*
+   * Clé = ID d'un budget de type "account"
+   * Exemple :
+   * {
+   *   "compte-courant": -50,
+   *   "livret-a": 50,
+   * }
+   */
+  accountImpact: BudgetImpacts;
+
+  /*
+   * Clé = ID d'un budget de type "spending"
+   * Exemple :
+   * {
+   *   "courses": -50,
+   * }
+   */
+  budgetImpact: BudgetImpacts;
 };
 
 export const initialOperations: Operation[] = [];

@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Operation } from "@/data/operations";
 import AnimatedButton from "@/components/ui/AnimatedButton";
+import type { Budget } from "@/data/budgets";
 
 type OperationType = "expense" | "income" | "transfer";
 
 type OperationFormProps = {
+  budgets: Budget[];
   onAddOperation: (operation: Operation) => void;
 };
+
 
 const categories = {
   expense: [
@@ -30,10 +33,7 @@ const categories = {
     "Natixis",
     "Vente",
   ],
-  transfer: [
-    "Livret A → Compte courant",
-    "Compte courant → Livret A",
-  ],
+  transfer: [],
 };
 
 const typeConfig = {
@@ -56,6 +56,7 @@ const typeConfig = {
 };
 
 export default function OperationForm({
+  budgets,
   onAddOperation,
 }: OperationFormProps) {
   const [type, setType] = useState<OperationType>("expense");
@@ -63,10 +64,74 @@ export default function OperationForm({
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
 
-  function selectType(nextType: OperationType) {
-    setType(nextType);
-    setCategory(categories[nextType][0]);
+  const accountBudgets = budgets.filter(
+  (budget) => budget.type === "account",
+);
+
+const spendingBudgets = budgets.filter(
+  (budget) => budget.type === "spending",
+);
+
+
+const [selectedBudgetId, setSelectedBudgetId] =
+  useState("");
+
+const [selectedAccountId, setSelectedAccountId] =
+  useState("");
+
+const [transferDestinationId, setTransferDestinationId] =
+  useState("");
+
+
+  useEffect(() => {
+  if (
+    !spendingBudgets.some(
+      (budget) => budget.id === selectedBudgetId,
+    )
+  ) {
+    setSelectedBudgetId(
+      spendingBudgets[0]?.id ?? "",
+    );
   }
+
+  if (
+    !accountBudgets.some(
+      (budget) => budget.id === selectedAccountId,
+    )
+  ) {
+    setSelectedAccountId(
+      accountBudgets[0]?.id ?? "",
+    );
+  }
+
+  if (
+    !accountBudgets.some(
+      (budget) =>
+        budget.id === transferDestinationId,
+    )
+  ) {
+    setTransferDestinationId(
+      accountBudgets[1]?.id ??
+        accountBudgets[0]?.id ??
+        "",
+    );
+  }
+}, [
+  budgets,
+  selectedBudgetId,
+  selectedAccountId,
+  transferDestinationId,
+]);
+
+  function selectType(nextType: OperationType) {
+  setType(nextType);
+
+  if (nextType !== "transfer") {
+    setCategory(categories[nextType][0]);
+  } else {
+    setCategory("Transfert");
+  }
+}
 
   function handleAmountChange(value: string) {
     const sanitizedValue = value
@@ -90,76 +155,161 @@ export default function OperationForm({
   }
 
   function handleSubmit() {
-    const parsedAmount = Number(amount.replace(",", "."));
+  const parsedAmount = Number(
+    amount.replace(",", "."),
+  );
 
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+  if (
+    !Number.isFinite(parsedAmount) ||
+    parsedAmount <= 0
+  ) {
+    return;
+  }
+
+  const accountImpact: Operation["accountImpact"] =
+    {};
+
+  const budgetImpact: Operation["budgetImpact"] =
+    {};
+
+  let operationTitle = category;
+  let operationIcon = getIcon();
+
+  if (type === "expense") {
+    const selectedBudget = budgets.find(
+      (budget) =>
+        budget.id === selectedBudgetId &&
+        budget.type === "spending",
+    );
+
+    if (
+      !selectedBudget ||
+      !selectedBudget.linkedAccountId
+    ) {
       return;
     }
 
-    const accountImpact: Operation["accountImpact"] = {};
-    const budgetImpact: Operation["budgetImpact"] = {};
+    const linkedAccount = budgets.find(
+      (budget) =>
+        budget.id ===
+          selectedBudget.linkedAccountId &&
+        budget.type === "account",
+    );
 
-    if (type === "expense") {
-      accountImpact["Compte courant"] = -parsedAmount;
-
-      if (category === "Courses") {
-        budgetImpact["Courses"] = -parsedAmount;
-      }
-
-      if (category === "Essence") {
-        budgetImpact["Essence"] = -parsedAmount;
-      }
-
-      if (
-        ["Abonnements", "Loisirs", "Restaurant"].includes(category)
-      ) {
-        budgetImpact["Loisirs"] = -parsedAmount;
-      }
+    if (!linkedAccount) {
+      return;
     }
 
-    if (type === "income") {
-      accountImpact["Compte courant"] = parsedAmount;
+    budgetImpact[selectedBudget.id] =
+      -parsedAmount;
+
+    accountImpact[linkedAccount.id] =
+      -parsedAmount;
+
+    operationTitle = description.trim()
+      ? `${selectedBudget.name} - ${description.trim()}`
+      : selectedBudget.name;
+
+    operationIcon = selectedBudget.icon;
+  }
+
+  if (type === "income") {
+    const selectedAccount = budgets.find(
+      (budget) =>
+        budget.id === selectedAccountId &&
+        budget.type === "account",
+    );
+
+    if (!selectedAccount) {
+      return;
     }
 
-    if (type === "transfer") {
-      if (category === "Livret A → Compte courant") {
-        accountImpact["Livret A"] = -parsedAmount;
-        accountImpact["Compte courant"] = parsedAmount;
-      }
+    accountImpact[selectedAccount.id] =
+      parsedAmount;
 
-      if (category === "Compte courant → Livret A") {
-        accountImpact["Compte courant"] = -parsedAmount;
-        accountImpact["Livret A"] = parsedAmount;
-      }
+    operationTitle = description.trim()
+      ? `${category} - ${description.trim()}`
+      : category;
+
+    operationIcon = "💰";
+  }
+
+  if (type === "transfer") {
+    if (
+      !selectedAccountId ||
+      !transferDestinationId ||
+      selectedAccountId ===
+        transferDestinationId
+    ) {
+      return;
     }
 
-    onAddOperation({
-      id: Date.now(),
-      date: new Date().toLocaleDateString("fr-FR", {
+    const sourceAccount = budgets.find(
+      (budget) =>
+        budget.id === selectedAccountId &&
+        budget.type === "account",
+    );
+
+    const destinationAccount = budgets.find(
+      (budget) =>
+        budget.id ===
+          transferDestinationId &&
+        budget.type === "account",
+    );
+
+    if (
+      !sourceAccount ||
+      !destinationAccount
+    ) {
+      return;
+    }
+
+    accountImpact[sourceAccount.id] =
+      -parsedAmount;
+
+    accountImpact[destinationAccount.id] =
+      parsedAmount;
+
+    operationTitle =
+      `${sourceAccount.name} → ${destinationAccount.name}`;
+
+    operationIcon = "🔁";
+  }
+
+  onAddOperation({
+    id: Date.now(),
+    date: new Date().toLocaleDateString(
+      "fr-FR",
+      {
         day: "2-digit",
         month: "2-digit",
-      }),
-      createdAt: new Date().toISOString(),
-      type,
-      category,
-      icon: getIcon(),
-      title: description.trim()
-        ? `${category} - ${description.trim()}`
+      },
+    ),
+    createdAt: new Date().toISOString(),
+    type,
+    category:
+      type === "expense"
+        ? selectedBudgetId
         : category,
-      amount: type === "income" ? parsedAmount : -parsedAmount,
-      color:
-        type === "income"
-          ? "text-green-400"
-          : type === "transfer"
-            ? "text-blue-400"
-            : "text-red-400",
-      accountImpact,
-      budgetImpact,
-    });
+    icon: operationIcon,
+    title: operationTitle,
+    amount:
+      type === "income"
+        ? parsedAmount
+        : -parsedAmount,
+    color:
+      type === "income"
+        ? "text-green-400"
+        : type === "transfer"
+          ? "text-blue-400"
+          : "text-red-400",
+    accountImpact,
+    budgetImpact,
+  });
 
-    setAmount("");
-    setDescription("");
-  }
+  setAmount("");
+  setDescription("");
+}
 
   return (
     <div className="space-y-5">
@@ -182,26 +332,151 @@ export default function OperationForm({
         )}
       </div>
 
-      <div>
-        <label className="mb-2 block text-sm text-slate-400">
-          Catégorie
-        </label>
+      {type !== "transfer" && (
+  <div>
+    <label className="mb-2 block text-sm text-slate-400">
+      Catégorie
+    </label>
 
-        <select
-          value={category}
-          onChange={(event) => setCategory(event.target.value)}
-          className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none"
+    <select
+      value={category}
+      onChange={(event) => setCategory(event.target.value)}
+      className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none"
+    >
+      {categories[type].map((item) => (
+        <option
+          key={item}
+          className="bg-[#0b1623] text-white"
         >
-          {categories[type].map((item) => (
+          {item}
+        </option>
+      ))}
+    </select>
+  </div>
+)}
+
+      {type === "expense" && (
+  <div>
+    <label className="mb-2 block text-sm text-slate-400">
+      Budget débité
+    </label>
+
+    <select
+      value={selectedBudgetId}
+      onChange={(event) =>
+        setSelectedBudgetId(event.target.value)
+      }
+      className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none"
+    >
+      {spendingBudgets.map((budget) => {
+        const linkedAccount = accountBudgets.find(
+          (account) =>
+            account.id === budget.linkedAccountId,
+        );
+
+        return (
+          <option
+            key={budget.id}
+            value={budget.id}
+            className="bg-[#0b1623]"
+          >
+            {budget.icon} {budget.name}
+            {linkedAccount
+              ? ` → ${linkedAccount.name}`
+              : " → aucun compte"}
+          </option>
+        );
+      })}
+    </select>
+  </div>
+)}
+
+{type === "income" && (
+  <div>
+    <label className="mb-2 block text-sm text-slate-400">
+      Compte crédité
+    </label>
+
+    <select
+      value={selectedAccountId}
+      onChange={(event) =>
+        setSelectedAccountId(event.target.value)
+      }
+      className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none"
+    >
+      {accountBudgets.map((budget) => (
+        <option
+          key={budget.id}
+          value={budget.id}
+          className="bg-[#0b1623]"
+        >
+          {budget.icon} {budget.name}
+        </option>
+      ))}
+    </select>
+  </div>
+)}
+
+{type === "transfer" && (
+  <div className="grid grid-cols-2 gap-3">
+    <div>
+      <label className="mb-2 block text-sm text-slate-400">
+        Depuis
+      </label>
+
+      <select
+        value={selectedAccountId}
+        onChange={(event) =>
+          setSelectedAccountId(
+            event.target.value,
+          )
+        }
+        className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none"
+      >
+        {accountBudgets.map((budget) => (
+          <option
+            key={budget.id}
+            value={budget.id}
+            className="bg-[#0b1623]"
+          >
+            {budget.icon} {budget.name}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    <div>
+      <label className="mb-2 block text-sm text-slate-400">
+        Vers
+      </label>
+
+      <select
+        value={transferDestinationId}
+        onChange={(event) =>
+          setTransferDestinationId(
+            event.target.value,
+          )
+        }
+        className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none"
+      >
+        {accountBudgets
+          .filter(
+            (budget) =>
+              budget.id !== selectedAccountId,
+          )
+          .map((budget) => (
             <option
-              key={item}
-              className="bg-[#0b1623] text-white"
+              key={budget.id}
+              value={budget.id}
+              className="bg-[#0b1623]"
             >
-              {item}
+              {budget.icon} {budget.name}
             </option>
           ))}
-        </select>
-      </div>
+      </select>
+    </div>
+  </div>
+)}
 
       <div>
         <label className="mb-2 block text-sm text-slate-400">
