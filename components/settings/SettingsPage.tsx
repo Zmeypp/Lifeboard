@@ -54,6 +54,9 @@ type RebootProgress = {
   error: string | null;
 };
 
+const REBOOT_STORAGE_KEY =
+  "lifeboard-reboot-in-progress";
+
 export default function SettingsPage({
   settings,
   onUpdateSettings,
@@ -216,6 +219,28 @@ useEffect(() => {
   }, [settings.weatherLatitude, settings.weatherLongitude]);
 
   useEffect(() => {
+  const rebootWasInProgress =
+    window.localStorage.getItem(
+      REBOOT_STORAGE_KEY,
+    ) === "true";
+
+  if (!rebootWasInProgress) {
+    return;
+  }
+
+  setShowRebootConfirmation(true);
+  setIsRebooting(true);
+
+  setRebootProgress({
+    status: "rebooting",
+    progress: 100,
+    message:
+      "Le système va redémarrer dans un instant. Veuillez patienter.",
+    error: null,
+  });
+}, []);
+
+useEffect(() => {
   if (!isRebooting) {
     return;
   }
@@ -246,6 +271,10 @@ useEffect(() => {
       setRebootProgress(data);
 
       if (data.status === "error") {
+        window.localStorage.removeItem(
+          REBOOT_STORAGE_KEY,
+        );
+
         setRebootError(
           data.error ??
             "La mise à jour a échoué.",
@@ -255,21 +284,31 @@ useEffect(() => {
       }
     } catch {
       /*
-       * Pendant le véritable redémarrage, la route
-       * devient naturellement inaccessible.
-       * On conserve donc la popup affichée.
+       * Lorsque le Raspberry Pi redémarre,
+       * Next.js devient inaccessible.
+       *
+       * On conserve volontairement :
+       * - la popup ouverte ;
+       * - la progression à 100 % ;
+       * - le message de redémarrage.
        */
+      if (!isCancelled) {
+        setRebootProgress({
+          status: "rebooting",
+          progress: 100,
+          message:
+            "Le système va redémarrer dans un instant. Veuillez patienter.",
+          error: null,
+        });
+      }
     }
   };
 
   void loadProgress();
 
-  const intervalId = window.setInterval(
-    () => {
-      void loadProgress();
-    },
-    1000,
-  );
+  const intervalId = window.setInterval(() => {
+    void loadProgress();
+  }, 1000);
 
   return () => {
     isCancelled = true;
@@ -462,6 +501,12 @@ useEffect(() => {
     return;
   }
 
+  window.localStorage.setItem(
+    REBOOT_STORAGE_KEY,
+    "true",
+  );
+
+  setShowRebootConfirmation(true);
   setIsRebooting(true);
   setRebootError(null);
 
@@ -499,6 +544,10 @@ useEffect(() => {
     console.error(
       "Erreur pendant le redémarrage :",
       error,
+    );
+
+    window.localStorage.removeItem(
+      REBOOT_STORAGE_KEY,
     );
 
     setRebootError(message);
@@ -947,10 +996,10 @@ useEffect(() => {
       <div className="mx-auto mb-6 h-12 w-12 animate-spin rounded-full border-4 border-red-400 border-t-transparent" />
 
       <p className="text-xl font-bold">
-        {rebootProgress.status === "rebooting"
-          ? "Redémarrage en cours…"
-          : "Mise à jour en cours…"}
-      </p>
+  {rebootProgress.status === "rebooting"
+    ? "Mise à jour terminée"
+    : "Mise à jour en cours…"}
+</p>
 
       <p className="mt-3 min-h-12 text-slate-400">
         {rebootProgress.message}
@@ -992,17 +1041,16 @@ useEffect(() => {
     </div>
 
     {rebootProgress.status === "rebooting" ? (
-      <p className="mt-5 text-center text-sm text-amber-300">
-        Le Raspberry Pi redémarre. Cette fenêtre
-        restera affichée jusqu’au rechargement de
-        LifeBoard.
-      </p>
-    ) : (
-      <p className="mt-5 text-center text-sm text-slate-500">
-        N’éteignez pas le Raspberry Pi et ne fermez
-        pas cette fenêtre.
-      </p>
-    )}
+  <p className="mt-5 text-center text-sm font-medium text-amber-300">
+    Le système va redémarrer dans un instant.
+    Veuillez patienter.
+  </p>
+) : (
+  <p className="mt-5 text-center text-sm text-slate-500">
+    N’éteignez pas le Raspberry Pi et ne fermez
+    pas cette fenêtre.
+  </p>
+)}
 
     {rebootError && (
       <div className="mt-5 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-300">

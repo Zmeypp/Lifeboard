@@ -217,9 +217,11 @@ CURRENT_PROGRESS=100
 write_status \
   "rebooting" \
   "$CURRENT_PROGRESS" \
-  "Redémarrage du Raspberry Pi…"
+  "Le système va redémarrer dans un instant. Veuillez patienter."
 
-sleep 2
+sync
+
+sleep 5
 
 sudo /usr/sbin/reboot ||
   fail "Impossible de redémarrer le Raspberry Pi."
