@@ -108,10 +108,6 @@ const [updateCheckError, setUpdateCheckError] =
 
 const scrollRef = useRef<HTMLDivElement>(null);
 
-
-const hasSeenActiveRebootStatusRef =
-  useRef(false);
-
 const dragState = useRef({
   active: false,
   startY: 0,
@@ -316,39 +312,16 @@ useEffect(() => {
       }
 
       /*
- * Le premier appel peut encore retourner l'ancien
- * statut "idle", juste avant que le script Bash
- * écrive son premier statut "running".
- */
-if (
-  data.status === "running" ||
-  data.status === "rebooting"
-) {
-  hasSeenActiveRebootStatusRef.current = true;
-}
+       * Un ancien statut "idle" peut être retourné
+       * durant les premières millisecondes.
+       *
+       * Il ne doit surtout jamais fermer la popup.
+       */
+      if (data.status === "idle") {
+        return;
+      }
 
-if (
-  data.status === "idle" &&
-  !hasSeenActiveRebootStatusRef.current
-) {
-  return;
-}
-
-setRebootProgress(data);
-
-if (
-  data.status === "idle" &&
-  hasSeenActiveRebootStatusRef.current
-) {
-  window.localStorage.removeItem(
-    REBOOT_STORAGE_KEY,
-  );
-
-  setIsRebooting(false);
-  setShowRebootConfirmation(false);
-
-  return;
-}
+      setRebootProgress(data);
 
       if (data.status === "error") {
         window.localStorage.removeItem(
@@ -361,16 +334,17 @@ if (
         );
 
         setIsRebooting(false);
+
+        /*
+         * On garde volontairement la popup ouverte
+         * afin que l'erreur reste visible.
+         */
       }
     } catch {
       /*
-       * Lorsque le Raspberry Pi redémarre,
-       * Next.js devient inaccessible.
-       *
-       * On conserve volontairement :
-       * - la popup ouverte ;
-       * - la progression à 100 % ;
-       * - le message de redémarrage.
+       * Dès que le Raspberry s'arrête, l'API devient
+       * inaccessible. On verrouille alors l'affichage
+       * à 100 % jusqu'à l'extinction/rechargement.
        */
       if (!isCancelled) {
         setRebootProgress({
@@ -580,8 +554,6 @@ if (
   if (isRebooting) {
     return;
   }
-
-  hasSeenActiveRebootStatusRef.current = false;
 
   window.localStorage.setItem(
     REBOOT_STORAGE_KEY,
