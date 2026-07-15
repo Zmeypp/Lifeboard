@@ -246,7 +246,7 @@ export default function DashboardGrid({
 
       <Card
         delay={0.2}
-        title="Ajouter une opération HAHAHA"
+        title="Ajouter une opération"
         className="col-span-3 row-span-6"
       >
         <OperationForm
