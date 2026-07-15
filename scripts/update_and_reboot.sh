@@ -126,15 +126,20 @@ write_status \
   "$CURRENT_PROGRESS" \
   "Préparation du dossier de compilation…"
 
+REMOTE_URL="$(git remote get-url origin)" ||
+  fail "Impossible de récupérer l'URL du dépôt distant."
+
+echo "Dépôt distant : $REMOTE_URL"
+
 rm -rf "$BUILD_DIR" ||
   fail "Impossible de supprimer l'ancien dossier de compilation."
 
 git clone \
   --branch "$BRANCH" \
   --single-branch \
-  "$LIFEBOARD_DIR" \
+  "$REMOTE_URL" \
   "$BUILD_DIR" ||
-  fail "Impossible de créer le dossier temporaire de compilation."
+  fail "Impossible de cloner la dernière version distante."
 
 cd "$BUILD_DIR" ||
   fail "Impossible d'accéder au dossier temporaire."
