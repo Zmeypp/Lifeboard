@@ -321,7 +321,21 @@ fi
 echo "Firefox PID : $FIREFOX_PID" \
   >> "$LOG_DIR/startup.log"
 
-sleep 2
+echo "Attente de l'affichage de Firefox..." \
+  >> "$LOG_DIR/startup.log"
+
+# Le processus Firefox démarre avant que sa fenêtre kiosque
+# soit réellement affichée. On laisse donc le splash visible
+# quelques secondes supplémentaires.
+for attempt in $(seq 1 30); do
+  if ! kill -0 "$FIREFOX_PID" 2>/dev/null; then
+    echo "Firefox s'est arrêté avant son affichage." \
+      >> "$LOG_DIR/startup.log"
+    break
+  fi
+
+  sleep 0.2
+done
 
 cleanup_splash
 SPLASH_PID=""
