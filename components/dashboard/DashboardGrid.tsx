@@ -206,13 +206,13 @@ export default function DashboardGrid({
   };
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-12 grid-rows-8 gap-4">
+    <div className="grid min-h-0 flex-1 grid-cols-12 grid-rows-10 gap-4">
       <Card
         delay={0}
         title="Mes budgets"
         subtitle="Montants restants"
         className="
-          col-span-3 row-span-6
+          col-span-3 row-span-7
           min-h-0 overflow-hidden
         "
       >
@@ -245,20 +245,37 @@ export default function DashboardGrid({
       </Card>
 
       <Card
-        delay={0.2}
-        title="Ajouter une opération"
-        className="col-span-3 row-span-6"
-      >
-        <OperationForm
-  budgets={budgets}
-  onAddOperation={onAddOperation}
-/>
-      </Card>
+  delay={0.2}
+  title="Ajouter une opération"
+  className="
+    col-span-3 row-span-7
+    min-h-0 overflow-hidden
+  "
+>
+  <div
+    className="
+      h-full min-h-0
+      overflow-y-auto overscroll-contain
+      pr-2
+    "
+    style={{
+      WebkitOverflowScrolling: "touch",
+    }}
+  >
+    <OperationForm
+      budgets={budgets}
+      onAddOperation={onAddOperation}
+    />
+  </div>
+</Card>
 
       <Card
         delay={0.25}
         title="Évolution patrimoine net"
-        className="col-span-3 row-span-6"
+        className="
+          col-span-3 row-span-7
+          min-h-0 overflow-hidden
+        "
       >
         <NetWorthChart
           budgets={budgets}
@@ -270,7 +287,10 @@ export default function DashboardGrid({
       <Card
         delay={0.05}
         title="Météo"
-        className="col-span-3 row-span-6"
+        className="
+          col-span-3 row-span-7
+          min-h-0 overflow-hidden  
+        "
       >
         <WeatherCard
           city={settings.weatherCity}
@@ -282,7 +302,10 @@ export default function DashboardGrid({
       <Card
         delay={0.1}
         title="Dernières opérations"
-        className="col-span-6 row-span-3"
+        className="
+          col-span-6 row-span-3
+          min-h-0 overflow-hidden  
+        "
       >
         <RecentOperations
           operations={operations}
@@ -292,7 +315,10 @@ export default function DashboardGrid({
       <Card
         delay={0.3}
         title="Objectif principal"
-        className="col-span-3 row-span-3"
+        className="
+          col-span-3 row-span-3
+          min-h-0 overflow-hidden  
+        "
       >
         <MainGoal
           budgets={budgets}
@@ -305,7 +331,10 @@ export default function DashboardGrid({
       <Card
         delay={0.15}
         title="Prochain salaire"
-        className="col-span-3 row-span-3"
+        className="
+          col-span-3 row-span-3
+          min-h-0 overflow-hidden  
+        "
       >
         <SalaryCard
           salaryDay={settings.salaryDay}

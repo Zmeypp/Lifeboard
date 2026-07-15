@@ -343,7 +343,7 @@ const [transferDestinationId, setTransferDestinationId] =
 }
 
   return (
-    <div className="space-y-5">
+    <div className="flex min-h-full flex-col gap-4 pb-1">
       <div className="grid grid-cols-3 gap-3">
         {(["expense", "income", "transfer"] as OperationType[]).map(
           (item) => (
@@ -486,9 +486,7 @@ const [transferDestinationId, setTransferDestinationId] =
         </select>
 
         <p className="mt-2 text-xs text-slate-500">
-          Cette dépense diminuera uniquement le
-          compte sélectionné. Aucun budget ne sera
-          impacté.
+          Seul le compte sélectionné sera débité.
         </p>
       </div>
     )}
@@ -638,12 +636,18 @@ const [transferDestinationId, setTransferDestinationId] =
       </div>
 
       <AnimatedButton
-        type="button"
-        onClick={handleSubmit}
-        className="w-full rounded-xl bg-rose-500 px-4 py-4 font-semibold text-white transition hover:bg-rose-400"
-      >
-        Ajouter l’opération
-      </AnimatedButton>
+  type="button"
+  onClick={handleSubmit}
+  className="
+    mt-auto w-full shrink-0
+    rounded-xl bg-rose-500
+    px-4 py-4
+    font-semibold text-white
+    transition hover:bg-rose-400
+  "
+>
+  Ajouter l’opération
+</AnimatedButton>
     </div>
   );
 }
