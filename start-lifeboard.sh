@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -uo pipefail
+
 LOG_DIR="$HOME/lifeboard-startup-logs"
 SQUEEKBOARD_DIR="$HOME/squeekboard-overlay/squeekboard-v1.43.1"
 LIFEBOARD_DIR="$HOME/Desktop/Lifeboard"
@@ -12,6 +14,45 @@ NODE_VERSION="v24.18.0"
 NODE_BIN_DIR="$HOME/.nvm/versions/node/$NODE_VERSION/bin"
 
 STATUS_FILE="$HOME/lifeboard-update-status.json"
+
+SPLASH_SCRIPT="$LIFEBOARD_DIR/scripts/lifeboard_splash.py"
+SPLASH_LOG="$LOG_DIR/splash.log"
+SPLASH_PID=""
+
+mkdir -p "$LOG_DIR"
+
+echo "===== Démarrage LifeBoard : $(date) =====" \
+  >> "$LOG_DIR/startup.log"
+
+cleanup_splash() {
+  if (
+    [ -n "${SPLASH_PID:-}" ] &&
+    kill -0 "$SPLASH_PID" 2>/dev/null
+  ); then
+    echo "Fermeture du splashscreen..." \
+      >> "$LOG_DIR/startup.log"
+
+    kill "$SPLASH_PID" 2>/dev/null || true
+  fi
+}
+
+trap cleanup_splash EXIT
+
+if [ -f "$SPLASH_SCRIPT" ]; then
+  echo "Démarrage du splashscreen..." \
+    >> "$LOG_DIR/startup.log"
+
+  python3 "$SPLASH_SCRIPT" \
+    >> "$SPLASH_LOG" 2>&1 &
+
+  SPLASH_PID=$!
+
+  echo "Splash PID : $SPLASH_PID" \
+    >> "$LOG_DIR/startup.log"
+else
+  echo "Splashscreen introuvable : $SPLASH_SCRIPT" \
+    >> "$LOG_DIR/startup.log"
+fi
 
 reset_update_status() {
   STATUS_FILE="$STATUS_FILE" python3 - <<'PY'
@@ -39,11 +80,6 @@ temporary_file.write_text(
 temporary_file.replace(status_file)
 PY
 }
-
-mkdir -p "$LOG_DIR"
-
-echo "===== Démarrage LifeBoard : $(date) =====" \
-  >> "$LOG_DIR/startup.log"
 
 # Laisse le temps à l'environnement graphique de terminer son démarrage
 sleep 1
@@ -255,22 +291,40 @@ echo "Statut de mise à jour réinitialisé." \
 echo "Démarrage de Firefox en mode kiosque..." \
   >> "$LOG_DIR/startup.log"
 
-# Évite que Firefox réutilise une fenêtre déjà ouverte hors kiosque
 pkill -f firefox 2>/dev/null || true
 
 sleep 0.2
+
+FIREFOX_PID=""
 
 if command -v firefox >/dev/null 2>&1; then
   MOZ_ENABLE_WAYLAND=1 firefox \
     --kiosk \
     "$LIFEBOARD_URL" \
     >> "$LOG_DIR/firefox.log" 2>&1 &
+
+  FIREFOX_PID=$!
 elif command -v firefox-esr >/dev/null 2>&1; then
   MOZ_ENABLE_WAYLAND=1 firefox-esr \
     --kiosk \
     "$LIFEBOARD_URL" \
     >> "$LOG_DIR/firefox.log" 2>&1 &
+
+  FIREFOX_PID=$!
 else
   echo "Firefox ou Firefox ESR est introuvable." \
     >> "$LOG_DIR/startup.log"
+
+  exit 1
 fi
+
+echo "Firefox PID : $FIREFOX_PID" \
+  >> "$LOG_DIR/startup.log"
+
+sleep 2
+
+cleanup_splash
+SPLASH_PID=""
+
+echo "Démarrage LifeBoard terminé." \
+  >> "$LOG_DIR/startup.log"
