@@ -68,7 +68,7 @@ export default function DashboardLayout() {
       useState<GenerationStatus | null>(null);
 
   const presentationDisabled =
-      activePage == "today-meal" || activePage == "week-meals"
+      activePage == "today-meal" || activePage == "week-meals" || activePage === "settings";
 
   const {
     inactiveSeconds,
