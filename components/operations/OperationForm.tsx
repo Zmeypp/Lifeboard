@@ -79,6 +79,11 @@ const [selectedBudgetId, setSelectedBudgetId] =
 const [selectedAccountId, setSelectedAccountId] =
   useState("");
 
+type ExpenseImpactMode = "budget" | "account";
+
+const [expenseImpactMode, setExpenseImpactMode] =
+  useState<ExpenseImpactMode>("budget");
+
 const [transferDestinationId, setTransferDestinationId] =
   useState("");
 
@@ -176,6 +181,7 @@ const [transferDestinationId, setTransferDestinationId] =
   let operationIcon = getIcon();
 
   if (type === "expense") {
+  if (expenseImpactMode === "budget") {
     const selectedBudget = budgets.find(
       (budget) =>
         budget.id === selectedBudgetId &&
@@ -191,8 +197,7 @@ const [transferDestinationId, setTransferDestinationId] =
 
     const linkedAccount = budgets.find(
       (budget) =>
-        budget.id ===
-          selectedBudget.linkedAccountId &&
+        budget.id === selectedBudget.linkedAccountId &&
         budget.type === "account",
     );
 
@@ -212,6 +217,31 @@ const [transferDestinationId, setTransferDestinationId] =
 
     operationIcon = selectedBudget.icon;
   }
+
+  if (expenseImpactMode === "account") {
+    const selectedAccount = budgets.find(
+      (budget) =>
+        budget.id === selectedAccountId &&
+        budget.type === "account",
+    );
+
+    if (!selectedAccount) {
+      return;
+    }
+
+    accountImpact[selectedAccount.id] =
+      -parsedAmount;
+
+    operationTitle = description.trim()
+      ? `${category} - ${description.trim()}`
+      : category;
+
+    operationIcon =
+      category === "Imprévus"
+        ? "⚠️"
+        : getIcon();
+  }
+}
 
   if (type === "income") {
     const selectedAccount = budgets.find(
@@ -288,9 +318,10 @@ const [transferDestinationId, setTransferDestinationId] =
     createdAt: new Date().toISOString(),
     type,
     category:
-      type === "expense"
-        ? selectedBudgetId
-        : category,
+        type === "expense" &&
+        expenseImpactMode === "budget"
+            ? selectedBudgetId
+            : category,
     icon: operationIcon,
     title: operationTitle,
     amount:
@@ -355,39 +386,112 @@ const [transferDestinationId, setTransferDestinationId] =
   </div>
 )}
 
-      {type === "expense" && (
-  <div>
-    <label className="mb-2 block text-sm text-slate-400">
-      Budget débité
-    </label>
+    {type === "expense" && (
+  <div className="space-y-4">
+    <div>
+      <label className="mb-2 block text-sm text-slate-400">
+        Impact de la dépense
+      </label>
 
-    <select
-      value={selectedBudgetId}
-      onChange={(event) =>
-        setSelectedBudgetId(event.target.value)
-      }
-      className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none"
-    >
-      {spendingBudgets.map((budget) => {
-        const linkedAccount = accountBudgets.find(
-          (account) =>
-            account.id === budget.linkedAccountId,
-        );
+      <div className="grid grid-cols-2 gap-3">
+        <AnimatedButton
+          type="button"
+          onClick={() =>
+            setExpenseImpactMode("budget")
+          }
+          className={`rounded-xl border px-4 py-3 font-semibold transition ${
+            expenseImpactMode === "budget"
+              ? "border-rose-400 bg-rose-500 text-white"
+              : "border-white/10 bg-white/[0.04] text-slate-300"
+          }`}
+        >
+          Budget + compte
+        </AnimatedButton>
 
-        return (
-          <option
-            key={budget.id}
-            value={budget.id}
-            className="bg-[#0b1623]"
-          >
-            {budget.icon} {budget.name}
-            {linkedAccount
-              ? ` → ${linkedAccount.name}`
-              : " → aucun compte"}
-          </option>
-        );
-      })}
-    </select>
+        <AnimatedButton
+          type="button"
+          onClick={() =>
+            setExpenseImpactMode("account")
+          }
+          className={`rounded-xl border px-4 py-3 font-semibold transition ${
+            expenseImpactMode === "account"
+              ? "border-rose-400 bg-rose-500 text-white"
+              : "border-white/10 bg-white/[0.04] text-slate-300"
+          }`}
+        >
+          Compte uniquement
+        </AnimatedButton>
+      </div>
+    </div>
+
+    {expenseImpactMode === "budget" && (
+      <div>
+        <label className="mb-2 block text-sm text-slate-400">
+          Budget débité
+        </label>
+
+        <select
+          value={selectedBudgetId}
+          onChange={(event) =>
+            setSelectedBudgetId(event.target.value)
+          }
+          className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none"
+        >
+          {spendingBudgets.map((budget) => {
+            const linkedAccount = accountBudgets.find(
+              (account) =>
+                account.id ===
+                budget.linkedAccountId,
+            );
+
+            return (
+              <option
+                key={budget.id}
+                value={budget.id}
+                className="bg-[#0b1623]"
+              >
+                {budget.icon} {budget.name}
+                {linkedAccount
+                  ? ` → ${linkedAccount.name}`
+                  : " → aucun compte"}
+              </option>
+            );
+          })}
+        </select>
+      </div>
+    )}
+
+    {expenseImpactMode === "account" && (
+      <div>
+        <label className="mb-2 block text-sm text-slate-400">
+          Compte débité
+        </label>
+
+        <select
+          value={selectedAccountId}
+          onChange={(event) =>
+            setSelectedAccountId(event.target.value)
+          }
+          className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none"
+        >
+          {accountBudgets.map((budget) => (
+            <option
+              key={budget.id}
+              value={budget.id}
+              className="bg-[#0b1623]"
+            >
+              {budget.icon} {budget.name}
+            </option>
+          ))}
+        </select>
+
+        <p className="mt-2 text-xs text-slate-500">
+          Cette dépense diminuera uniquement le
+          compte sélectionné. Aucun budget ne sera
+          impacté.
+        </p>
+      </div>
+    )}
   </div>
 )}
 
