@@ -28,15 +28,15 @@ write_status() {
     ERROR_MESSAGE="$error" \
     STATUS_FILE="$STATUS_FILE" \
     python3 - <<'PY'
-    import json
-    import os
-    from datetime import datetime, timezone
-    from pathlib import Path
+import json
+import os
+from datetime import datetime, timezone
+from pathlib import Path
 
-    status_file = Path(os.environ["STATUS_FILE"])
-    temporary_file = status_file.with_suffix(".tmp")
+status_file = Path(os.environ["STATUS_FILE"])
+temporary_file = status_file.with_suffix(".tmp")
 
-    data = {
+data = {
     "status": os.environ["STATUS"],
     "progress": int(os.environ["PROGRESS"]),
     "message": os.environ["MESSAGE"],
@@ -45,8 +45,8 @@ write_status() {
 }
 
 temporary_file.write_text(
-json.dumps(data, ensure_ascii=False, indent=2),
-encoding="utf-8",
+    json.dumps(data, ensure_ascii=False, indent=2),
+    encoding="utf-8",
 )
 
 temporary_file.replace(status_file)
