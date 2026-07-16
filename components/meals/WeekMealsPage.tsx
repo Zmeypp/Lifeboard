@@ -163,12 +163,26 @@ function getFriendlyGenerationError(technicalError: string) {
     );
 }
 
+function slugify(text: string) {
+    return text
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^\p{L}\p{N}\s_-]/gu, "")
+        .replace(/\s+/g, "_")
+        .slice(0, 80);
+}
+
 export default function WeekMealsPage({
     mealPlan,
     onUpdateMealPlan,
     generationStatus,
 }: Props) {
     const [showQr, setShowQr] = useState(false);
+
+    const [selectedDay, setSelectedDay] = useState<
+        MealPlan["days"][number] | null
+    >(null);
 
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -185,6 +199,15 @@ export default function WeekMealsPage({
         useState(false);
 
     const dragState = useRef({
+        active: false,
+        startY: 0,
+        startScrollTop: 0,
+        moved: false,
+    });
+
+    const popupScrollRef = useRef<HTMLDivElement>(null);
+
+    const popupDragState = useRef({
         active: false,
         startY: 0,
         startScrollTop: 0,
@@ -303,6 +326,79 @@ export default function WeekMealsPage({
         dragState.current.active = false;
 
         if (container && container.hasPointerCapture(event.pointerId)) {
+            container.releasePointerCapture(event.pointerId);
+        }
+    };
+
+    const handlePopupPointerDown = (
+        event: ReactPointerEvent<HTMLDivElement>,
+    ) => {
+        const target = event.target as HTMLElement;
+
+        // On ne démarre pas le scroll sur les boutons
+        // ou autres éléments interactifs.
+        if (
+            target.closest(
+                "button, a, input, textarea, select, label, [role='button']",
+            )
+        ) {
+            return;
+        }
+
+        const container = popupScrollRef.current;
+
+        if (!container) {
+            return;
+        }
+
+        popupDragState.current = {
+            active: true,
+            startY: event.clientY,
+            startScrollTop: container.scrollTop,
+            moved: false,
+        };
+
+        try {
+            container.setPointerCapture(event.pointerId);
+        } catch {
+            // Pointer capture non disponible sur certains écrans.
+        }
+    };
+
+    const handlePopupPointerMove = (
+        event: ReactPointerEvent<HTMLDivElement>,
+    ) => {
+        const container = popupScrollRef.current;
+
+        if (!container || !popupDragState.current.active) {
+            return;
+        }
+
+        const distance =
+            event.clientY - popupDragState.current.startY;
+
+        if (Math.abs(distance) > 4) {
+            popupDragState.current.moved = true;
+        }
+
+        container.scrollTop =
+            popupDragState.current.startScrollTop - distance;
+
+        // Empêche la sélection du texte pendant le glissement.
+        event.preventDefault();
+    };
+
+    const handlePopupPointerEnd = (
+        event: ReactPointerEvent<HTMLDivElement>,
+    ) => {
+        const container = popupScrollRef.current;
+
+        popupDragState.current.active = false;
+
+        if (
+            container &&
+            container.hasPointerCapture(event.pointerId)
+        ) {
             container.releasePointerCapture(event.pointerId);
         }
     };
@@ -541,6 +637,13 @@ export default function WeekMealsPage({
         shopping_list: mealPlan.shopping_list,
     });
 
+    const today = new Intl.DateTimeFormat("fr-CA", {
+        timeZone: "Europe/Paris",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).format(new Date());
+
     return (
         <div className="flex min-h-0 flex-1 overflow-hidden">
             <div
@@ -564,23 +667,84 @@ export default function WeekMealsPage({
                     <h2 className="mb-6 text-3xl font-bold">📅 Planning</h2>
 
                     <div className="space-y-3">
-                        {mealPlan.days.map((day) => (
-                            <div
-                                key={day.date}
-                                className="rounded-xl border border-white/10 bg-white/5 p-4"
-                            >
-                                <div className="font-bold">{day.weekday}</div>
+                        {mealPlan.days.map((day) => {
+                            const isPast = day.date < today;
+                            const isToday = day.date === today;
 
-                                <div className="text-slate-300">
-                                    {day.meal.title}
-                                </div>
+                            return (
+                                <button
+                                    key={day.date}
+                                    type="button"
+                                    onPointerUp={(event) => {
+                                        event.stopPropagation();
+                                        setSelectedDay(day);
+                                    }}
+                                    onClick={(event) => {
+                                        if (event.detail === 0) {
+                                            setSelectedDay(day);
+                                        }
+                                    }}
+                                    className="
+                                        relative z-10 w-full rounded-xl
+                                        border border-white/10 bg-white/5
+                                        p-4 text-left transition
+                                        active:scale-[0.99] active:bg-white/10
+                                    "
+                                    style={{
+                                        touchAction: "none",
+                                    }}
+                                >
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="min-w-0">
+                                            <div className="font-bold">
+                                                {day.weekday}
+                                            </div>
 
-                                <div className="mt-2 text-sm text-slate-500">
-                                    {day.meal.total_time} min •{" "}
-                                    {day.meal.estimated_cost.toFixed(2)} €
-                                </div>
-                            </div>
-                        ))}
+                                            <div className="mt-1 truncate text-slate-300">
+                                                {day.meal.title}
+                                            </div>
+                                        </div>
+
+                                        <div className="shrink-0">
+                                            {isToday && (
+                                                <span
+                                                    className="
+                                                        rounded-full bg-purple-500/20
+                                                        px-3 py-1 text-xs font-bold
+                                                        text-purple-300
+                                                    "
+                                                >
+                                                    Aujourd’hui
+                                                </span>
+                                            )}
+
+                                            {isPast && (
+                                                <span
+                                                    className="
+                                                        rounded-full bg-amber-500/15
+                                                        px-3 py-1 text-xs font-bold
+                                                        text-amber-300
+                                                    "
+                                                >
+                                                    Passé
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-3 flex items-center justify-between">
+                                        <div className="text-sm text-slate-500">
+                                            {day.meal.total_time} min •{" "}
+                                            {day.meal.estimated_cost.toFixed(2)} €
+                                        </div>
+
+                                        <div className="text-sm font-semibold text-purple-300">
+                                            Voir la recette
+                                        </div>
+                                    </div>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -903,6 +1067,282 @@ export default function WeekMealsPage({
                         </div>
                     </div>
                 )}
+
+                {selectedDay && (() => {
+                    const imageName =
+                        `${selectedDay.date}_` +
+                        `${slugify(selectedDay.meal.title)}.jpg`;
+
+                    const imageVersion = encodeURIComponent(
+                        mealPlan.generated_at ?? "unknown",
+                    );
+
+                    const imageUrl =
+                        `/api/meal-images/${encodeURIComponent(imageName)}` +
+                        `?v=${imageVersion}`;
+
+                    const isPast = selectedDay.date < today;
+
+                    const formattedDate = new Intl.DateTimeFormat("fr-FR", {
+                        timeZone: "Europe/Paris",
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                    }).format(
+                        new Date(`${selectedDay.date}T12:00:00`),
+                    );
+
+                    return (
+                        <div
+                            className="
+                                fixed inset-0 z-[70] flex items-center
+                                justify-center bg-black/80 p-6
+                                backdrop-blur-sm
+                            "
+                            style={{
+                                touchAction: "none",
+                            }}
+                        >
+                            <div
+                                className="
+                                    flex max-h-[92vh] w-full max-w-6xl
+                                    flex-col overflow-hidden rounded-2xl
+                                    border border-white/10 bg-[#0b1623]
+                                    shadow-2xl
+                                "
+                            >
+                                <div
+                                    className="
+                                        flex shrink-0 items-start
+                                        justify-between gap-6
+                                        border-b border-white/10 p-6
+                                    "
+                                >
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <h2 className="text-3xl font-bold">
+                                                {selectedDay.meal.title}
+                                            </h2>
+
+                                            {isPast && (
+                                                <span
+                                                    className="
+                                                        rounded-full bg-amber-500/15
+                                                        px-3 py-1 text-sm font-bold
+                                                        text-amber-300
+                                                    "
+                                                >
+                                                    Plat passé
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <p className="mt-2 capitalize text-slate-400">
+                                            {formattedDate}
+                                        </p>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onPointerUp={(event) => {
+                                            event.stopPropagation();
+                                            setSelectedDay(null);
+                                        }}
+                                        onClick={(event) => {
+                                            if (event.detail === 0) {
+                                                setSelectedDay(null);
+                                            }
+                                        }}
+                                        className="
+                                            relative z-10 flex h-12 w-12
+                                            shrink-0 items-center justify-center
+                                            rounded-xl bg-white/5
+                                            active:bg-white/15
+                                        "
+                                        style={{
+                                            touchAction: "none",
+                                        }}
+                                        aria-label="Fermer la recette"
+                                    >
+                                        <X size={28} />
+                                    </button>
+                                </div>
+
+                                <div
+                                    ref={popupScrollRef}
+                                    onPointerDown={handlePopupPointerDown}
+                                    onPointerMove={handlePopupPointerMove}
+                                    onPointerUp={handlePopupPointerEnd}
+                                    onPointerCancel={handlePopupPointerEnd}
+                                    className="
+                                        grid min-h-0 flex-1 grid-cols-2
+                                        content-start gap-6 overflow-y-auto
+                                        overscroll-contain p-6 pb-32
+                                        select-none
+                                    "
+                                    style={{
+                                        WebkitOverflowScrolling: "touch",
+                                        touchAction: "none",
+                                        cursor: popupDragState.current.active
+                                            ? "grabbing"
+                                            : "grab",
+                                    }}
+                                >
+                                    <div className="min-w-0">
+                                        <div
+                                            className="
+                                                overflow-hidden rounded-2xl
+                                                border border-white/10 bg-black/20
+                                            "
+                                        >
+                                            <img
+                                                src={imageUrl}
+                                                alt={selectedDay.meal.title}
+                                                className="
+                                                    h-80 w-full bg-[#111827]
+                                                    object-contain
+                                                "
+                                                onError={(event) => {
+                                                    console.error(
+                                                        "Image introuvable :",
+                                                        imageUrl,
+                                                    );
+
+                                                    event.currentTarget.style.display =
+                                                        "none";
+                                                }}
+                                            />
+                                        </div>
+
+                                        <p className="mt-5 text-lg text-slate-300">
+                                            {selectedDay.meal.description}
+                                        </p>
+
+                                        <div
+                                            className="
+                                                mt-6 grid grid-cols-3 gap-3
+                                                text-center
+                                            "
+                                        >
+                                            <div className="rounded-xl bg-white/5 p-4">
+                                                <div className="text-2xl">⏱️</div>
+
+                                                <div className="mt-2 font-bold">
+                                                    {selectedDay.meal.total_time} min
+                                                </div>
+                                            </div>
+
+                                            <div className="rounded-xl bg-white/5 p-4">
+                                                <div className="text-2xl">💶</div>
+
+                                                <div className="mt-2 font-bold">
+                                                    {selectedDay.meal.estimated_cost.toFixed(2)}
+                                                    {" €"}
+                                                </div>
+                                            </div>
+
+                                            <div className="rounded-xl bg-white/5 p-4">
+                                                <div className="text-2xl">🍴</div>
+
+                                                <div className="mt-2 font-bold">
+                                                    {selectedDay.meal.portions} portions
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {isPast && (
+                                            <div
+                                                className="
+                                                    mt-6 rounded-xl
+                                                    border border-amber-400/25
+                                                    bg-amber-500/10 p-4
+                                                    text-amber-200
+                                                "
+                                            >
+                                                Ce plat était prévu précédemment. Tu peux
+                                                encore le préparer pour éviter de perdre les
+                                                ingrédients achetés.
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="min-w-0">
+                                        <div
+                                            className="
+                                                rounded-2xl border border-white/10
+                                                bg-white/[0.03] p-6
+                                            "
+                                        >
+                                            <h3 className="text-2xl font-bold">
+                                                📖 Recette
+                                            </h3>
+
+                                            <h4 className="mb-3 mt-6 text-lg font-bold">
+                                                Ingrédients
+                                            </h4>
+
+                                            <ul className="space-y-3">
+                                                {selectedDay.ingredients.map(
+                                                    (ingredient, index) => (
+                                                        <li
+                                                            key={
+                                                                `${ingredient.name}-${index}`
+                                                            }
+                                                            className="
+                                                                rounded-lg bg-white/5
+                                                                px-4 py-3
+                                                            "
+                                                        >
+                                                            <span className="text-purple-300">
+                                                                •
+                                                            </span>{" "}
+                                                            {ingredient.quantity}{" "}
+                                                            {ingredient.unit}{" "}
+                                                            {ingredient.name}
+                                                        </li>
+                                                    ),
+                                                )}
+                                            </ul>
+
+                                            <h4 className="mb-3 mt-8 text-lg font-bold">
+                                                Préparation
+                                            </h4>
+
+                                            <div className="space-y-4">
+                                                {selectedDay.recipe.map((step) => (
+                                                    <div
+                                                        key={step.step}
+                                                        className="
+                                                            rounded-xl bg-white/5
+                                                            p-4
+                                                        "
+                                                    >
+                                                        <div
+                                                            className="
+                                                                font-bold text-purple-300
+                                                            "
+                                                        >
+                                                            Étape {step.step}
+                                                        </div>
+
+                                                        <div
+                                                            className="
+                                                                mt-2 leading-relaxed
+                                                                text-slate-300
+                                                            "
+                                                        >
+                                                            {step.text}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
         </div>
     );
 }
