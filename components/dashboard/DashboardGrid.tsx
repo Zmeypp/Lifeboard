@@ -1,9 +1,9 @@
 "use client";
 
 import {
-  useEffect,
-  useRef,
-  type PointerEvent as ReactPointerEvent,
+    useEffect,
+    useRef,
+    type PointerEvent as ReactPointerEvent,
 } from "react";
 
 import Card from "@/components/ui/Card";
@@ -22,455 +22,435 @@ import type { Budget } from "@/data/budgets";
 import type { Goal } from "@/data/goals";
 
 import {
-  calculateNetWorth,
-  getCurrentMonthKey,
-  getMonthLabel,
+    calculateNetWorth,
+    getCurrentMonthKey,
+    getMonthLabel,
 } from "@/lib/netWorth";
 
 type DashboardGridProps = {
-  operations: Operation[];
-  budgets: Budget[];
-  goals: Goal[];
-  netWorthSnapshots: NetWorthSnapshot[];
-  setNetWorthSnapshots: React.Dispatch<
-    React.SetStateAction<NetWorthSnapshot[]>
-  >;
-  onAddOperation: (operation: Operation) => void;
-  settings: AppSettings;
-  isLoaded: boolean;
+    operations: Operation[];
+    budgets: Budget[];
+    goals: Goal[];
+    netWorthSnapshots: NetWorthSnapshot[];
+    setNetWorthSnapshots: React.Dispatch<
+        React.SetStateAction<NetWorthSnapshot[]>
+    >;
+    onAddOperation: (operation: Operation) => void;
+    settings: AppSettings;
+    isLoaded: boolean;
 };
 
 export default function DashboardGrid({
-  operations,
-  budgets,
-  goals,
-  netWorthSnapshots,
-  setNetWorthSnapshots,
-  onAddOperation,
-  settings,
-  isLoaded,
-}: DashboardGridProps) {
-  const budgetScrollRef = useRef<HTMLDivElement>(null);
-
-  const operationScrollRef = useRef<HTMLDivElement>(null);
-
-const operationDragState = useRef({
-  active: false,
-  pointerId: -1,
-  startY: 0,
-  startScrollTop: 0,
-  moved: false,
-});
-
-  const budgetDragState = useRef({
-    active: false,
-    pointerId: -1,
-    startY: 0,
-    startScrollTop: 0,
-    moved: false,
-  });
-
-  useEffect(() => {
-    if (!isLoaded) {
-      return;
-    }
-
-    const currentMonth = getCurrentMonthKey();
-
-    const alreadyExists = netWorthSnapshots.some(
-      (snapshot) => snapshot.month === currentMonth,
-    );
-
-    if (alreadyExists) {
-      return;
-    }
-
-    const currentNetWorth = calculateNetWorth(
-      budgets,
-      operations,
-    );
-
-    setNetWorthSnapshots((current) => [
-      ...current,
-      {
-        month: currentMonth,
-        label: getMonthLabel(),
-        value: currentNetWorth,
-      },
-    ]);
-  }, [
-    budgets,
     operations,
+    budgets,
+    goals,
     netWorthSnapshots,
     setNetWorthSnapshots,
+    onAddOperation,
+    settings,
     isLoaded,
-  ]);
+}: DashboardGridProps) {
+    const budgetScrollRef = useRef<HTMLDivElement>(null);
 
-  const handleBudgetPointerDown = (
-    event: ReactPointerEvent<HTMLDivElement>,
-  ) => {
-    const target = event.target as HTMLElement;
+    const operationScrollRef = useRef<HTMLDivElement>(null);
 
-    /*
-     * On ne démarre pas le déplacement lorsqu'on touche
-     * un élément interactif de la liste.
-     */
-    if (
-      target.closest(
-        [
-          "button",
-          "a",
-          "input",
-          "textarea",
-          "select",
-          "[role='button']",
-          "[data-no-drag]",
-        ].join(","),
-      )
-    ) {
-      return;
-    }
+    const operationDragState = useRef({
+        active: false,
+        pointerId: -1,
+        startY: 0,
+        startScrollTop: 0,
+        moved: false,
+    });
 
-    const container = budgetScrollRef.current;
+    const budgetDragState = useRef({
+        active: false,
+        pointerId: -1,
+        startY: 0,
+        startScrollTop: 0,
+        moved: false,
+    });
 
-    if (!container) {
-      return;
-    }
+    useEffect(() => {
+        if (!isLoaded) {
+            return;
+        }
 
-    budgetDragState.current = {
-      active: true,
-      pointerId: event.pointerId,
-      startY: event.clientY,
-      startScrollTop: container.scrollTop,
-      moved: false,
+        const currentMonth = getCurrentMonthKey();
+
+        const alreadyExists = netWorthSnapshots.some(
+            (snapshot) => snapshot.month === currentMonth,
+        );
+
+        if (alreadyExists) {
+            return;
+        }
+
+        const currentNetWorth = calculateNetWorth(budgets, operations);
+
+        setNetWorthSnapshots((current) => [
+            ...current,
+            {
+                month: currentMonth,
+                label: getMonthLabel(),
+                value: currentNetWorth,
+            },
+        ]);
+    }, [
+        budgets,
+        operations,
+        netWorthSnapshots,
+        setNetWorthSnapshots,
+        isLoaded,
+    ]);
+
+    const handleBudgetPointerDown = (
+        event: ReactPointerEvent<HTMLDivElement>,
+    ) => {
+        const target = event.target as HTMLElement;
+
+        /*
+         * On ne démarre pas le déplacement lorsqu'on touche
+         * un élément interactif de la liste.
+         */
+        if (
+            target.closest(
+                [
+                    "button",
+                    "a",
+                    "input",
+                    "textarea",
+                    "select",
+                    "[role='button']",
+                    "[data-no-drag]",
+                ].join(","),
+            )
+        ) {
+            return;
+        }
+
+        const container = budgetScrollRef.current;
+
+        if (!container) {
+            return;
+        }
+
+        budgetDragState.current = {
+            active: true,
+            pointerId: event.pointerId,
+            startY: event.clientY,
+            startScrollTop: container.scrollTop,
+            moved: false,
+        };
+
+        try {
+            container.setPointerCapture(event.pointerId);
+        } catch {
+            /*
+             * Certains navigateurs ou écrans tactiles
+             * ne prennent pas en charge le pointer capture.
+             */
+        }
     };
 
-    try {
-      container.setPointerCapture(event.pointerId);
-    } catch {
-      /*
-       * Certains navigateurs ou écrans tactiles
-       * ne prennent pas en charge le pointer capture.
-       */
-    }
-  };
+    const handleBudgetPointerMove = (
+        event: ReactPointerEvent<HTMLDivElement>,
+    ) => {
+        const container = budgetScrollRef.current;
+        const dragState = budgetDragState.current;
 
-  const handleBudgetPointerMove = (
-    event: ReactPointerEvent<HTMLDivElement>,
-  ) => {
-    const container = budgetScrollRef.current;
-    const dragState = budgetDragState.current;
+        if (
+            !container ||
+            !dragState.active ||
+            dragState.pointerId !== event.pointerId
+        ) {
+            return;
+        }
 
-    if (
-      !container ||
-      !dragState.active ||
-      dragState.pointerId !== event.pointerId
-    ) {
-      return;
-    }
+        const distance = event.clientY - dragState.startY;
 
-    const distance = event.clientY - dragState.startY;
+        /*
+         * Petit seuil pour éviter de considérer un simple appui
+         * comme un déplacement.
+         */
+        if (Math.abs(distance) > 4) {
+            dragState.moved = true;
+        }
 
-    /*
-     * Petit seuil pour éviter de considérer un simple appui
-     * comme un déplacement.
-     */
-    if (Math.abs(distance) > 4) {
-      dragState.moved = true;
-    }
+        if (!dragState.moved) {
+            return;
+        }
 
-    if (!dragState.moved) {
-      return;
-    }
+        container.scrollTop = dragState.startScrollTop - distance;
 
-    container.scrollTop =
-      dragState.startScrollTop - distance;
+        /*
+         * Empêche le navigateur de sélectionner les textes
+         * ou de déplacer toute la page.
+         */
+        event.preventDefault();
+    };
 
-    /*
-     * Empêche le navigateur de sélectionner les textes
-     * ou de déplacer toute la page.
-     */
-    event.preventDefault();
-  };
+    const handleBudgetPointerEnd = (
+        event: ReactPointerEvent<HTMLDivElement>,
+    ) => {
+        const container = budgetScrollRef.current;
 
-  const handleBudgetPointerEnd = (
-    event: ReactPointerEvent<HTMLDivElement>,
-  ) => {
-    const container = budgetScrollRef.current;
+        budgetDragState.current.active = false;
+        budgetDragState.current.pointerId = -1;
 
-    budgetDragState.current.active = false;
-    budgetDragState.current.pointerId = -1;
+        if (container && container.hasPointerCapture(event.pointerId)) {
+            try {
+                container.releasePointerCapture(event.pointerId);
+            } catch {
+                // Le pointeur peut déjà avoir été libéré.
+            }
+        }
+    };
 
-    if (
-      container &&
-      container.hasPointerCapture(event.pointerId)
-    ) {
-      try {
-        container.releasePointerCapture(
-          event.pointerId,
-        );
-      } catch {
-        // Le pointeur peut déjà avoir été libéré.
-      }
-    }
-  };
+    const handleOperationPointerDown = (
+        event: ReactPointerEvent<HTMLDivElement>,
+    ) => {
+        const target = event.target as HTMLElement;
 
-  const handleOperationPointerDown = (
-  event: ReactPointerEvent<HTMLDivElement>,
-) => {
-  const target = event.target as HTMLElement;
+        /*
+         * Les champs et boutons gardent leur comportement normal.
+         * On peut néanmoins commencer le scroll depuis les labels
+         * et les zones de texte non interactives.
+         */
+        if (
+            target.closest(
+                [
+                    "button",
+                    "a",
+                    "input",
+                    "textarea",
+                    "select",
+                    "[role='button']",
+                    "[data-no-drag]",
+                ].join(","),
+            )
+        ) {
+            return;
+        }
 
-  /*
-   * Les champs et boutons gardent leur comportement normal.
-   * On peut néanmoins commencer le scroll depuis les labels
-   * et les zones de texte non interactives.
-   */
-  if (
-    target.closest(
-      [
-        "button",
-        "a",
-        "input",
-        "textarea",
-        "select",
-        "[role='button']",
-        "[data-no-drag]",
-      ].join(","),
-    )
-  ) {
-    return;
-  }
+        const container = operationScrollRef.current;
 
-  const container = operationScrollRef.current;
+        if (!container) {
+            return;
+        }
 
-  if (!container) {
-    return;
-  }
+        operationDragState.current = {
+            active: true,
+            pointerId: event.pointerId,
+            startY: event.clientY,
+            startScrollTop: container.scrollTop,
+            moved: false,
+        };
 
-  operationDragState.current = {
-    active: true,
-    pointerId: event.pointerId,
-    startY: event.clientY,
-    startScrollTop: container.scrollTop,
-    moved: false,
-  };
+        try {
+            container.setPointerCapture(event.pointerId);
+        } catch {
+            /*
+             * Le pointer capture peut ne pas être disponible
+             * sur certains navigateurs ou écrans tactiles.
+             */
+        }
+    };
 
-  try {
-    container.setPointerCapture(event.pointerId);
-  } catch {
-    /*
-     * Le pointer capture peut ne pas être disponible
-     * sur certains navigateurs ou écrans tactiles.
-     */
-  }
-};
+    const handleOperationPointerMove = (
+        event: ReactPointerEvent<HTMLDivElement>,
+    ) => {
+        const container = operationScrollRef.current;
+        const dragState = operationDragState.current;
 
-const handleOperationPointerMove = (
-  event: ReactPointerEvent<HTMLDivElement>,
-) => {
-  const container = operationScrollRef.current;
-  const dragState = operationDragState.current;
+        if (
+            !container ||
+            !dragState.active ||
+            dragState.pointerId !== event.pointerId
+        ) {
+            return;
+        }
 
-  if (
-    !container ||
-    !dragState.active ||
-    dragState.pointerId !== event.pointerId
-  ) {
-    return;
-  }
+        const distance = event.clientY - dragState.startY;
 
-  const distance =
-    event.clientY - dragState.startY;
+        /*
+         * Évite de transformer un simple appui
+         * en déplacement.
+         */
+        if (Math.abs(distance) > 4) {
+            dragState.moved = true;
+        }
 
-  /*
-   * Évite de transformer un simple appui
-   * en déplacement.
-   */
-  if (Math.abs(distance) > 4) {
-    dragState.moved = true;
-  }
+        if (!dragState.moved) {
+            return;
+        }
 
-  if (!dragState.moved) {
-    return;
-  }
+        container.scrollTop = dragState.startScrollTop - distance;
 
-  container.scrollTop =
-    dragState.startScrollTop - distance;
+        /*
+         * Empêche la sélection des textes et le déplacement
+         * de la page complète.
+         */
+        event.preventDefault();
+    };
 
-  /*
-   * Empêche la sélection des textes et le déplacement
-   * de la page complète.
-   */
-  event.preventDefault();
-};
+    const handleOperationPointerEnd = (
+        event: ReactPointerEvent<HTMLDivElement>,
+    ) => {
+        const container = operationScrollRef.current;
 
-const handleOperationPointerEnd = (
-  event: ReactPointerEvent<HTMLDivElement>,
-) => {
-  const container = operationScrollRef.current;
+        operationDragState.current.active = false;
+        operationDragState.current.pointerId = -1;
 
-  operationDragState.current.active = false;
-  operationDragState.current.pointerId = -1;
+        if (container && container.hasPointerCapture(event.pointerId)) {
+            try {
+                container.releasePointerCapture(event.pointerId);
+            } catch {
+                // Le pointeur peut déjà avoir été libéré.
+            }
+        }
+    };
 
-  if (
-    container &&
-    container.hasPointerCapture(event.pointerId)
-  ) {
-    try {
-      container.releasePointerCapture(
-        event.pointerId,
-      );
-    } catch {
-      // Le pointeur peut déjà avoir été libéré.
-    }
-  }
-};
-
-  return (
-    <div className="grid min-h-0 flex-1 grid-cols-12 grid-rows-10 gap-4">
-      <Card
-        delay={0}
-        title="Mes budgets"
-        subtitle="Montants restants"
-        className="
+    return (
+        <div className="grid min-h-0 flex-1 grid-cols-12 grid-rows-10 gap-4">
+            <Card
+                delay={0}
+                title="Mes budgets"
+                subtitle="Montants restants"
+                className="
           col-span-3 row-span-7
           min-h-0 overflow-hidden
         "
-      >
-        <div
-          ref={budgetScrollRef}
-          onPointerDown={handleBudgetPointerDown}
-          onPointerMove={handleBudgetPointerMove}
-          onPointerUp={handleBudgetPointerEnd}
-          onPointerCancel={handleBudgetPointerEnd}
-          onLostPointerCapture={handleBudgetPointerEnd}
-          className="
+            >
+                <div
+                    ref={budgetScrollRef}
+                    onPointerDown={handleBudgetPointerDown}
+                    onPointerMove={handleBudgetPointerMove}
+                    onPointerUp={handleBudgetPointerEnd}
+                    onPointerCancel={handleBudgetPointerEnd}
+                    onLostPointerCapture={handleBudgetPointerEnd}
+                    className="
             h-full min-h-0
             overflow-y-auto overscroll-contain
             pr-2 select-none
           "
-          style={{
-            WebkitOverflowScrolling: "touch",
-            touchAction: "none",
-            WebkitUserSelect: "none",
-            userSelect: "none",
-            cursor: "grab",
-          }}
-        >
-          <BudgetList
-            budgets={budgets}
-            operations={operations}
-            settings={settings}
-          />
-        </div>
-      </Card>
+                    style={{
+                        WebkitOverflowScrolling: "touch",
+                        touchAction: "none",
+                        WebkitUserSelect: "none",
+                        userSelect: "none",
+                        cursor: "grab",
+                    }}
+                >
+                    <BudgetList
+                        budgets={budgets}
+                        operations={operations}
+                        settings={settings}
+                    />
+                </div>
+            </Card>
 
-      <Card
-  delay={0.2}
-  title="Ajouter une opération"
-  className="
+            <Card
+                delay={0.2}
+                title="Ajouter une opération"
+                className="
     col-span-3 row-span-7
     min-h-0 overflow-hidden
   "
->
-  <div
-    ref={operationScrollRef}
-    onPointerDown={handleOperationPointerDown}
-    onPointerMove={handleOperationPointerMove}
-    onPointerUp={handleOperationPointerEnd}
-    onPointerCancel={handleOperationPointerEnd}
-    onLostPointerCapture={handleOperationPointerEnd}
-    className="
+            >
+                <div
+                    ref={operationScrollRef}
+                    onPointerDown={handleOperationPointerDown}
+                    onPointerMove={handleOperationPointerMove}
+                    onPointerUp={handleOperationPointerEnd}
+                    onPointerCancel={handleOperationPointerEnd}
+                    onLostPointerCapture={handleOperationPointerEnd}
+                    className="
       h-full min-h-0
       overflow-y-auto overscroll-contain
       pr-2 select-none
     "
-    style={{
-      WebkitOverflowScrolling: "touch",
-      touchAction: "none",
-      WebkitUserSelect: "none",
-      userSelect: "none",
-      cursor: "grab",
-    }}
-  >
-    <OperationForm
-      budgets={budgets}
-      onAddOperation={onAddOperation}
-    />
-  </div>
-</Card>
+                    style={{
+                        WebkitOverflowScrolling: "touch",
+                        touchAction: "none",
+                        WebkitUserSelect: "none",
+                        userSelect: "none",
+                        cursor: "grab",
+                    }}
+                >
+                    <OperationForm
+                        budgets={budgets}
+                        onAddOperation={onAddOperation}
+                    />
+                </div>
+            </Card>
 
-      <Card
-        delay={0.25}
-        title="Évolution patrimoine net"
-        className="
+            <Card
+                delay={0.25}
+                title="Évolution patrimoine net"
+                className="
           col-span-3 row-span-7
           min-h-0 overflow-hidden
         "
-      >
-        <NetWorthChart
-          budgets={budgets}
-          operations={operations}
-          snapshots={netWorthSnapshots}
-        />
-      </Card>
+            >
+                <NetWorthChart
+                    budgets={budgets}
+                    operations={operations}
+                    snapshots={netWorthSnapshots}
+                />
+            </Card>
 
-      <Card
-        delay={0.05}
-        title="Météo"
-        className="
+            <Card
+                delay={0.05}
+                title="Météo"
+                className="
           col-span-3 row-span-7
           min-h-0 overflow-hidden  
         "
-      >
-        <WeatherCard
-          city={settings.weatherCity}
-          latitude={settings.weatherLatitude}
-          longitude={settings.weatherLongitude}
-        />
-      </Card>
+            >
+                <WeatherCard
+                    city={settings.weatherCity}
+                    latitude={settings.weatherLatitude}
+                    longitude={settings.weatherLongitude}
+                />
+            </Card>
 
-      <Card
-        delay={0.1}
-        title="Dernières opérations"
-        className="
+            <Card
+                delay={0.1}
+                title="Dernières opérations"
+                className="
           col-span-6 row-span-3
           min-h-0 overflow-hidden  
         "
-      >
-        <RecentOperations
-          operations={operations}
-        />
-      </Card>
+            >
+                <RecentOperations operations={operations} />
+            </Card>
 
-      <Card
-        delay={0.3}
-        title="Objectif principal"
-        className="
+            <Card
+                delay={0.3}
+                title="Objectif principal"
+                className="
           col-span-3 row-span-3
           min-h-0 overflow-hidden  
         "
-      >
-        <MainGoal
-          budgets={budgets}
-          goals={goals}
-          operations={operations}
-          settings={settings}
-        />
-      </Card>
+            >
+                <MainGoal
+                    budgets={budgets}
+                    goals={goals}
+                    operations={operations}
+                    settings={settings}
+                />
+            </Card>
 
-      <Card
-        delay={0.15}
-        title="Prochain salaire"
-        className="
+            <Card
+                delay={0.15}
+                title="Prochain salaire"
+                className="
           col-span-3 row-span-3
           min-h-0 overflow-hidden  
         "
-      >
-        <SalaryCard
-          salaryDay={settings.salaryDay}
-        />
-      </Card>
-    </div>
-  );
+            >
+                <SalaryCard salaryDay={settings.salaryDay} />
+            </Card>
+        </div>
+    );
 }

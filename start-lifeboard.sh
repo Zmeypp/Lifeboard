@@ -22,55 +22,55 @@ SPLASH_PID=""
 mkdir -p "$LOG_DIR"
 
 echo "===== Démarrage LifeBoard : $(date) =====" \
-  >> "$LOG_DIR/startup.log"
+>> "$LOG_DIR/startup.log"
 
 cleanup_splash() {
-  if (
-    [ -n "${SPLASH_PID:-}" ] &&
-    kill -0 "$SPLASH_PID" 2>/dev/null
-  ); then
-    echo "Fermeture du splashscreen..." \
-      >> "$LOG_DIR/startup.log"
+    if (
+        [ -n "${SPLASH_PID:-}" ] &&
+        kill -0 "$SPLASH_PID" 2>/dev/null
+        ); then
+        echo "Fermeture du splashscreen..." \
+        >> "$LOG_DIR/startup.log"
 
-    kill "$SPLASH_PID" 2>/dev/null || true
-  fi
+        kill "$SPLASH_PID" 2>/dev/null || true
+    fi
 }
 
 
 wait_for_graphical_environment() {
-  echo "Attente de l'environnement graphique..." \
+    echo "Attente de l'environnement graphique..." \
     >> "$LOG_DIR/startup.log"
 
-  for attempt in $(seq 1 100); do
-    if (
-      [ -n "${WAYLAND_DISPLAY:-}" ] &&
-      [ -n "${XDG_RUNTIME_DIR:-}" ] &&
-      [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]
-    ); then
-      echo "Wayland disponible après $attempt tentative(s)." \
-        >> "$LOG_DIR/startup.log"
+    for attempt in $(seq 1 100); do
+        if (
+            [ -n "${WAYLAND_DISPLAY:-}" ] &&
+            [ -n "${XDG_RUNTIME_DIR:-}" ] &&
+            [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]
+            ); then
+            echo "Wayland disponible après $attempt tentative(s)." \
+            >> "$LOG_DIR/startup.log"
 
-      return 0
-    fi
+            return 0
+        fi
 
-    if (
-      [ -n "${DISPLAY:-}" ] &&
-      command -v xdpyinfo >/dev/null 2>&1 &&
-      xdpyinfo >/dev/null 2>&1
-    ); then
-      echo "Serveur X disponible après $attempt tentative(s)." \
-        >> "$LOG_DIR/startup.log"
+        if (
+            [ -n "${DISPLAY:-}" ] &&
+            command -v xdpyinfo >/dev/null 2>&1 &&
+            xdpyinfo >/dev/null 2>&1
+            ); then
+            echo "Serveur X disponible après $attempt tentative(s)." \
+            >> "$LOG_DIR/startup.log"
 
-      return 0
-    fi
+            return 0
+        fi
 
-    sleep 0.1
-  done
+        sleep 0.1
+    done
 
-  echo "AVERTISSEMENT : environnement graphique non confirmé." \
+    echo "AVERTISSEMENT : environnement graphique non confirmé." \
     >> "$LOG_DIR/startup.log"
 
-  return 1
+    return 1
 }
 
 trap cleanup_splash EXIT
@@ -82,41 +82,41 @@ wait_for_graphical_environment || true
 sleep 0.5
 
 if [ -f "$SPLASH_SCRIPT" ]; then
-  echo "Démarrage du splashscreen..." \
+    echo "Démarrage du splashscreen..." \
     >> "$LOG_DIR/startup.log"
 
-  python3 "$SPLASH_SCRIPT" \
+    python3 "$SPLASH_SCRIPT" \
     > "$SPLASH_LOG" 2>&1 &
 
-  SPLASH_PID=$!
+    SPLASH_PID=$!
 
-  sleep 0.2
+    sleep 0.2
 
-  if kill -0 "$SPLASH_PID" 2>/dev/null; then
-    echo "Splash PID : $SPLASH_PID" \
-      >> "$LOG_DIR/startup.log"
-  else
-    echo "ERREUR : le splashscreen s'est arrêté immédiatement." \
-      >> "$LOG_DIR/startup.log"
+    if kill -0 "$SPLASH_PID" 2>/dev/null; then
+        echo "Splash PID : $SPLASH_PID" \
+        >> "$LOG_DIR/startup.log"
+    else
+        echo "ERREUR : le splashscreen s'est arrêté immédiatement." \
+        >> "$LOG_DIR/startup.log"
 
-    SPLASH_PID=""
-  fi
+        SPLASH_PID=""
+    fi
 else
-  echo "Splashscreen introuvable : $SPLASH_SCRIPT" \
+    echo "Splashscreen introuvable : $SPLASH_SCRIPT" \
     >> "$LOG_DIR/startup.log"
 fi
 
 reset_update_status() {
-  STATUS_FILE="$STATUS_FILE" python3 - <<'PY'
-import json
-import os
-from datetime import datetime, timezone
-from pathlib import Path
+    STATUS_FILE="$STATUS_FILE" python3 - <<'PY'
+    import json
+    import os
+    from datetime import datetime, timezone
+    from pathlib import Path
 
-status_file = Path(os.environ["STATUS_FILE"])
-temporary_file = status_file.with_suffix(".tmp")
+    status_file = Path(os.environ["STATUS_FILE"])
+    temporary_file = status_file.with_suffix(".tmp")
 
-data = {
+    data = {
     "status": "idle",
     "progress": 0,
     "message": "LifeBoard a redémarré avec succès.",
@@ -125,8 +125,8 @@ data = {
 }
 
 temporary_file.write_text(
-    json.dumps(data, ensure_ascii=False, indent=2),
-    encoding="utf-8",
+json.dumps(data, ensure_ascii=False, indent=2),
+encoding="utf-8",
 )
 
 temporary_file.replace(status_file)
@@ -150,19 +150,19 @@ sleep 0.2
 echo "Démarrage de Squeekboard..." >> "$LOG_DIR/startup.log"
 
 cd "$SQUEEKBOARD_DIR" || {
-  echo "Dossier Squeekboard introuvable : $SQUEEKBOARD_DIR" \
-    >> "$LOG_DIR/startup.log"
-  exit 1
+echo "Dossier Squeekboard introuvable : $SQUEEKBOARD_DIR" \
+>> "$LOG_DIR/startup.log"
+exit 1
 }
 
 nohup env SQUEEKBOARD_LAYER=overlay \
-  ./build/src/squeekboard \
-  >> "$LOG_DIR/squeekboard.log" 2>&1 &
+./build/src/squeekboard \
+>> "$LOG_DIR/squeekboard.log" 2>&1 &
 
 SQUEEKBOARD_PID=$!
 
 echo "Squeekboard PID : $SQUEEKBOARD_PID" \
-  >> "$LOG_DIR/startup.log"
+>> "$LOG_DIR/startup.log"
 
 sleep 0.5
 
@@ -181,69 +181,69 @@ sleep 0.2
 # --------------------------------------------------
 
 if [ -f "$UPDATE_READY_FILE" ]; then
-  echo "Mise à jour LifeBoard détectée." \
+    echo "Mise à jour LifeBoard détectée." \
     >> "$LOG_DIR/startup.log"
 
-  if [ ! -d "$UPDATE_BUILD_DIR/.next" ]; then
-    echo "ERREUR : nouveau dossier .next introuvable." \
-      >> "$LOG_DIR/startup.log"
-    exit 1
-  fi
+    if [ ! -d "$UPDATE_BUILD_DIR/.next" ]; then
+        echo "ERREUR : nouveau dossier .next introuvable." \
+        >> "$LOG_DIR/startup.log"
+        exit 1
+    fi
 
-  if [ ! -d "$UPDATE_BUILD_DIR/node_modules" ]; then
-    echo "ERREUR : nouvelles dépendances introuvables." \
-      >> "$LOG_DIR/startup.log"
-    exit 1
-  fi
+    if [ ! -d "$UPDATE_BUILD_DIR/node_modules" ]; then
+        echo "ERREUR : nouvelles dépendances introuvables." \
+        >> "$LOG_DIR/startup.log"
+        exit 1
+    fi
 
-  cd "$LIFEBOARD_DIR" || {
+    cd "$LIFEBOARD_DIR" || {
     echo "Dossier LifeBoard introuvable : $LIFEBOARD_DIR" \
-      >> "$LOG_DIR/startup.log"
+    >> "$LOG_DIR/startup.log"
     exit 1
-  }
+}
 
-  BRANCH="$(git symbolic-ref --quiet --short HEAD)" || {
-    echo "ERREUR : impossible de déterminer la branche Git." \
-      >> "$LOG_DIR/startup.log"
-    exit 1
-  }
+BRANCH="$(git symbolic-ref --quiet --short HEAD)" || {
+echo "ERREUR : impossible de déterminer la branche Git." \
+>> "$LOG_DIR/startup.log"
+exit 1
+}
 
-  echo "Publication de origin/$BRANCH..." \
-  >> "$LOG_DIR/startup.log"
+echo "Publication de origin/$BRANCH..." \
+>> "$LOG_DIR/startup.log"
 
 # Le git fetch a déjà été réalisé par update_and_reboot.sh
 # avant le redémarrage. Il ne faut pas dépendre du réseau
 # pendant le démarrage du Raspberry Pi.
 git reset --hard "origin/$BRANCH" \
-  >> "$LOG_DIR/startup.log" 2>&1 || {
-    echo "ERREUR : échec de git reset sur origin/$BRANCH." \
-      >> "$LOG_DIR/startup.log"
-    exit 1
-  }
+>> "$LOG_DIR/startup.log" 2>&1 || {
+echo "ERREUR : échec de git reset sur origin/$BRANCH." \
+>> "$LOG_DIR/startup.log"
+exit 1
+}
 
-  rm -rf "$LIFEBOARD_DIR/.next"
-  rm -rf "$LIFEBOARD_DIR/node_modules"
+rm -rf "$LIFEBOARD_DIR/.next"
+rm -rf "$LIFEBOARD_DIR/node_modules"
 
-  # Les deux dossiers sont dans $HOME, donc normalement sur le même
-  # système de fichiers : mv est presque instantané, contrairement à cp.
-  mv "$UPDATE_BUILD_DIR/.next" "$LIFEBOARD_DIR/.next" || {
-    echo "ERREUR : impossible d'installer le nouveau build." \
-      >> "$LOG_DIR/startup.log"
-    exit 1
-  }
+# Les deux dossiers sont dans $HOME, donc normalement sur le même
+# système de fichiers : mv est presque instantané, contrairement à cp.
+mv "$UPDATE_BUILD_DIR/.next" "$LIFEBOARD_DIR/.next" || {
+echo "ERREUR : impossible d'installer le nouveau build." \
+>> "$LOG_DIR/startup.log"
+exit 1
+}
 
-  mv "$UPDATE_BUILD_DIR/node_modules" "$LIFEBOARD_DIR/node_modules" || {
-    echo "ERREUR : impossible d'installer les nouvelles dépendances." \
-      >> "$LOG_DIR/startup.log"
-    exit 1
-  }
+mv "$UPDATE_BUILD_DIR/node_modules" "$LIFEBOARD_DIR/node_modules" || {
+echo "ERREUR : impossible d'installer les nouvelles dépendances." \
+>> "$LOG_DIR/startup.log"
+exit 1
+}
 
-  rm -rf "$UPDATE_BUILD_DIR"
+rm -rf "$UPDATE_BUILD_DIR"
 
-  sync
+sync
 
-  echo "Mise à jour LifeBoard publiée avec succès." \
-    >> "$LOG_DIR/startup.log"
+echo "Mise à jour LifeBoard publiée avec succès." \
+>> "$LOG_DIR/startup.log"
 fi
 
 # --------------------------------------------------
@@ -255,22 +255,22 @@ echo "Démarrage de LifeBoard..." >> "$LOG_DIR/startup.log"
 export NVM_DIR="$HOME/.nvm"
 
 if [ -s "$NVM_DIR/nvm.sh" ]; then
-  # shellcheck disable=SC1090
-  source "$NVM_DIR/nvm.sh"
+    # shellcheck disable=SC1090
+    source "$NVM_DIR/nvm.sh"
 fi
 
 export PATH="$NODE_BIN_DIR:$PATH"
 
 echo "Node utilisé : $(command -v node)" \
-  >> "$LOG_DIR/startup.log"
+>> "$LOG_DIR/startup.log"
 
 echo "NPM utilisé : $(command -v npm)" \
-  >> "$LOG_DIR/startup.log"
+>> "$LOG_DIR/startup.log"
 
 cd "$LIFEBOARD_DIR" || {
-  echo "Dossier LifeBoard introuvable : $LIFEBOARD_DIR" \
-    >> "$LOG_DIR/startup.log"
-  exit 1
+echo "Dossier LifeBoard introuvable : $LIFEBOARD_DIR" \
+>> "$LOG_DIR/startup.log"
+exit 1
 }
 
 export VIRTUAL_ENV="$LIFEBOARD_DIR/.venv"
@@ -280,18 +280,18 @@ export PYTHONUTF8=1
 export PYTHONIOENCODING=utf-8
 
 echo "Python utilisé : $(command -v python)" \
-  >> "$LOG_DIR/startup.log"
+>> "$LOG_DIR/startup.log"
 
 echo "Version Python : $(python --version 2>&1)" \
-  >> "$LOG_DIR/startup.log"
+>> "$LOG_DIR/startup.log"
 
 nohup "$NODE_BIN_DIR/npm" run start \
-  >> "$LOG_DIR/lifeboard.log" 2>&1 &
+>> "$LOG_DIR/lifeboard.log" 2>&1 &
 
 LIFEBOARD_PID=$!
 
 echo "LifeBoard PID : $LIFEBOARD_PID" \
-  >> "$LOG_DIR/startup.log"
+>> "$LOG_DIR/startup.log"
 
 # --------------------------------------------------
 # 6. Attente que LifeBoard soit accessible
@@ -302,43 +302,43 @@ echo "Attente de $LIFEBOARD_URL..." >> "$LOG_DIR/startup.log"
 LIFEBOARD_READY=false
 
 for attempt in $(seq 1 300); do
-  if curl --silent --fail --output /dev/null "$LIFEBOARD_URL"; then
-    LIFEBOARD_READY=true
+    if curl --silent --fail --output /dev/null "$LIFEBOARD_URL"; then
+        LIFEBOARD_READY=true
 
-    echo "LifeBoard accessible après $attempt tentative(s)." \
-      >> "$LOG_DIR/startup.log"
+        echo "LifeBoard accessible après $attempt tentative(s)." \
+        >> "$LOG_DIR/startup.log"
 
-    break
-  fi
+        break
+    fi
 
-  if ! kill -0 "$LIFEBOARD_PID" 2>/dev/null; then
-    echo "Le processus LifeBoard s'est arrêté." \
-      >> "$LOG_DIR/startup.log"
+    if ! kill -0 "$LIFEBOARD_PID" 2>/dev/null; then
+        echo "Le processus LifeBoard s'est arrêté." \
+        >> "$LOG_DIR/startup.log"
 
-    break
-  fi
+        break
+    fi
 
-  sleep 0.2
+    sleep 0.2
 done
 
 if [ "$LIFEBOARD_READY" != "true" ]; then
-  echo "LifeBoard indisponible, Firefox ne sera pas lancé." \
+    echo "LifeBoard indisponible, Firefox ne sera pas lancé." \
     >> "$LOG_DIR/startup.log"
 
-  exit 1
+    exit 1
 fi
 
 reset_update_status
 
 echo "Statut de mise à jour réinitialisé." \
-  >> "$LOG_DIR/startup.log"
+>> "$LOG_DIR/startup.log"
 
 # --------------------------------------------------
 # 7. Démarrage de Firefox en mode kiosque
 # --------------------------------------------------
 
 echo "Démarrage de Firefox en mode kiosque..." \
-  >> "$LOG_DIR/startup.log"
+>> "$LOG_DIR/startup.log"
 
 pkill -f firefox 2>/dev/null || true
 
@@ -347,47 +347,47 @@ sleep 0.2
 FIREFOX_PID=""
 
 if command -v firefox >/dev/null 2>&1; then
-  MOZ_ENABLE_WAYLAND=1 firefox \
+    MOZ_ENABLE_WAYLAND=1 firefox \
     --kiosk \
     "$LIFEBOARD_URL" \
     >> "$LOG_DIR/firefox.log" 2>&1 &
 
-  FIREFOX_PID=$!
+    FIREFOX_PID=$!
 elif command -v firefox-esr >/dev/null 2>&1; then
-  MOZ_ENABLE_WAYLAND=1 firefox-esr \
+    MOZ_ENABLE_WAYLAND=1 firefox-esr \
     --kiosk \
     "$LIFEBOARD_URL" \
     >> "$LOG_DIR/firefox.log" 2>&1 &
 
-  FIREFOX_PID=$!
+    FIREFOX_PID=$!
 else
-  echo "Firefox ou Firefox ESR est introuvable." \
+    echo "Firefox ou Firefox ESR est introuvable." \
     >> "$LOG_DIR/startup.log"
 
-  exit 1
+    exit 1
 fi
 
 echo "Firefox PID : $FIREFOX_PID" \
-  >> "$LOG_DIR/startup.log"
+>> "$LOG_DIR/startup.log"
 
 echo "Attente de l'affichage de Firefox..." \
-  >> "$LOG_DIR/startup.log"
+>> "$LOG_DIR/startup.log"
 
 # Le processus Firefox démarre avant que sa fenêtre kiosque
 # soit réellement affichée. On laisse donc le splash visible
 # quelques secondes supplémentaires.
 for attempt in $(seq 1 30); do
-  if ! kill -0 "$FIREFOX_PID" 2>/dev/null; then
-    echo "Firefox s'est arrêté avant son affichage." \
-      >> "$LOG_DIR/startup.log"
-    break
-  fi
+    if ! kill -0 "$FIREFOX_PID" 2>/dev/null; then
+        echo "Firefox s'est arrêté avant son affichage." \
+        >> "$LOG_DIR/startup.log"
+        break
+    fi
 
-  sleep 0.2
+    sleep 0.2
 done
 
 cleanup_splash
 SPLASH_PID=""
 
 echo "Démarrage LifeBoard terminé." \
-  >> "$LOG_DIR/startup.log"
+>> "$LOG_DIR/startup.log"

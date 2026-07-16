@@ -1,16 +1,12 @@
 "use client";
 
 import {
-  useEffect,
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
+    useEffect,
+    useRef,
+    useState,
+    type PointerEvent as ReactPointerEvent,
 } from "react";
-import {
-  Power,
-  TriangleAlert,
-  X,
-} from "lucide-react";
+import { Power, TriangleAlert, X } from "lucide-react";
 import type { AppSettings } from "@/data/settings";
 import type { Budget } from "@/data/budgets";
 import type { Operation } from "@/data/operations";
@@ -20,1208 +16,1130 @@ import AnimatedButton from "@/components/ui/AnimatedButton";
 import { motion } from "framer-motion";
 
 type SettingsPageProps = {
-  settings: AppSettings;
-  onUpdateSettings: (settings: AppSettings) => void;
-  budgets: Budget[];
-  operations: Operation[];
-  goals: Goal[];
-  netWorthSnapshots: NetWorthSnapshot[];
-  onImportData: (data: {
-    settings?: AppSettings;
-    budgets?: Budget[];
-    operations?: Operation[];
-    goals?: Goal[];
-    netWorthSnapshots?: NetWorthSnapshot[];
-  }) => void;
+    settings: AppSettings;
+    onUpdateSettings: (settings: AppSettings) => void;
+    budgets: Budget[];
+    operations: Operation[];
+    goals: Goal[];
+    netWorthSnapshots: NetWorthSnapshot[];
+    onImportData: (data: {
+        settings?: AppSettings;
+        budgets?: Budget[];
+        operations?: Operation[];
+        goals?: Goal[];
+        netWorthSnapshots?: NetWorthSnapshot[];
+    }) => void;
 };
 
 type UpdateStatus = {
-  updateAvailable: boolean;
-  branch?: string;
-  behindCount?: number;
-  aheadCount?: number;
-  message?: string;
+    updateAvailable: boolean;
+    branch?: string;
+    behindCount?: number;
+    aheadCount?: number;
+    message?: string;
 };
 
 type RebootProgress = {
-  status:
-    | "idle"
-    | "running"
-    | "rebooting"
-    | "error";
-  progress: number;
-  message: string;
-  error: string | null;
+    status: "idle" | "running" | "rebooting" | "error";
+    progress: number;
+    message: string;
+    error: string | null;
 };
 
-const REBOOT_STORAGE_KEY =
-  "lifeboard-reboot-in-progress";
+const REBOOT_STORAGE_KEY = "lifeboard-reboot-in-progress";
 
 export default function SettingsPage({
-  settings,
-  onUpdateSettings,
-  budgets,
-  operations,
-  goals,
-  netWorthSnapshots,
-  onImportData,
+    settings,
+    onUpdateSettings,
+    budgets,
+    operations,
+    goals,
+    netWorthSnapshots,
+    onImportData,
 }: SettingsPageProps) {
-  const [latitudeInput, setLatitudeInput] = useState(
-    String(settings.weatherLatitude).replace(".", ","),
-  );
-
-  const [longitudeInput, setLongitudeInput] = useState(
-    String(settings.weatherLongitude).replace(".", ","),
-  );
-
-  const [
-  showRebootConfirmation,
-  setShowRebootConfirmation,
-] = useState(false);
-
-const [
-  isRebooting,
-  setIsRebooting,
-] = useState(false);
-
-const [
-  rebootError,
-  setRebootError,
-] = useState<string | null>(null);
-
-const [updateStatus, setUpdateStatus] =
-  useState<UpdateStatus | null>(null);
-
-const [isCheckingUpdate, setIsCheckingUpdate] =
-  useState(true);
-
-const [updateCheckError, setUpdateCheckError] =
-  useState<string | null>(null);
-
-  const [rebootProgress, setRebootProgress] =
-  useState<RebootProgress>({
-    status: "idle",
-    progress: 0,
-    message: "Préparation…",
-    error: null,
-  });
-
-const scrollRef = useRef<HTMLDivElement>(null);
-
-const dragState = useRef({
-  active: false,
-  startY: 0,
-  startScrollTop: 0,
-  moved: false,
-});
-
-const handlePointerDown = (
-  event: ReactPointerEvent<HTMLDivElement>,
-) => {
-  const target = event.target as HTMLElement;
-
-  /*
-   * On ne démarre pas le scroll tactile lorsqu'on
-   * appuie sur un élément interactif.
-   */
-  if (
-    target.closest(
-      "button, a, input, textarea, select, label, [role='button']",
-    )
-  ) {
-    return;
-  }
-
-  const container = scrollRef.current;
-
-  if (!container) {
-    return;
-  }
-
-  dragState.current = {
-    active: true,
-    startY: event.clientY,
-    startScrollTop: container.scrollTop,
-    moved: false,
-  };
-
-  try {
-    container.setPointerCapture(event.pointerId);
-  } catch {
-    /*
-     * Certains navigateurs ou écrans tactiles
-     * ne prennent pas en charge le pointer capture.
-     */
-  }
-};
-
-const handlePointerMove = (
-  event: ReactPointerEvent<HTMLDivElement>,
-) => {
-  const container = scrollRef.current;
-
-  if (!container || !dragState.current.active) {
-    return;
-  }
-
-  const distance =
-    event.clientY - dragState.current.startY;
-
-  if (Math.abs(distance) > 4) {
-    dragState.current.moved = true;
-  }
-
-  container.scrollTop =
-    dragState.current.startScrollTop - distance;
-
-  /*
-   * Empêche le navigateur de sélectionner le texte
-   * ou d'interpréter le geste autrement.
-   */
-  event.preventDefault();
-};
-
-const handlePointerEnd = (
-  event: ReactPointerEvent<HTMLDivElement>,
-) => {
-  const container = scrollRef.current;
-
-  dragState.current.active = false;
-
-  if (
-    container &&
-    container.hasPointerCapture(event.pointerId)
-  ) {
-    container.releasePointerCapture(event.pointerId);
-  }
-};
-
-useEffect(() => {
-  void checkForUpdates();
-
-  const interval = window.setInterval(() => {
-    void checkForUpdates();
-  }, 10 * 60 * 1000);
-
-  return () => {
-    window.clearInterval(interval);
-  };
-}, []);
-
-  useEffect(() => {
-    setLatitudeInput(
-      String(settings.weatherLatitude).replace(".", ","),
+    const [latitudeInput, setLatitudeInput] = useState(
+        String(settings.weatherLatitude).replace(".", ","),
     );
 
-    setLongitudeInput(
-      String(settings.weatherLongitude).replace(".", ","),
+    const [longitudeInput, setLongitudeInput] = useState(
+        String(settings.weatherLongitude).replace(".", ","),
     );
-  }, [settings.weatherLatitude, settings.weatherLongitude]);
 
-  useEffect(() => {
-  const restoreRebootState = async () => {
-    const rebootWasInProgress =
-      window.localStorage.getItem(
-        REBOOT_STORAGE_KEY,
-      ) === "true";
+    const [showRebootConfirmation, setShowRebootConfirmation] = useState(false);
 
-    if (!rebootWasInProgress) {
-      return;
-    }
+    const [isRebooting, setIsRebooting] = useState(false);
 
-    try {
-      const response = await fetch(
-        `/api/system/reboot-status?t=${Date.now()}`,
-        {
-          method: "GET",
-          cache: "no-store",
-        },
-      );
+    const [rebootError, setRebootError] = useState<string | null>(null);
 
-      if (!response.ok) {
-        throw new Error(
-          `Erreur HTTP ${response.status}`,
-        );
-      }
+    const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null);
 
-      const data =
-        (await response.json()) as RebootProgress;
+    const [isCheckingUpdate, setIsCheckingUpdate] = useState(true);
 
-      /*
-       * Le nouveau serveur est démarré :
-       * le redémarrage précédent est terminé.
-       */
-      if (data.status === "idle") {
-        window.localStorage.removeItem(
-          REBOOT_STORAGE_KEY,
-        );
+    const [updateCheckError, setUpdateCheckError] = useState<string | null>(
+        null,
+    );
 
-        return;
-      }
-
-      setShowRebootConfirmation(true);
-      setIsRebooting(true);
-      setRebootProgress(data);
-    } catch {
-      /*
-       * Le serveur est encore indisponible :
-       * on garde l'état de redémarrage.
-       */
-      setShowRebootConfirmation(true);
-      setIsRebooting(true);
-
-      setRebootProgress({
-        status: "rebooting",
-        progress: 100,
-        message:
-          "Le système va redémarrer dans un instant. Veuillez patienter.",
+    const [rebootProgress, setRebootProgress] = useState<RebootProgress>({
+        status: "idle",
+        progress: 0,
+        message: "Préparation…",
         error: null,
-      });
-    }
-  };
+    });
 
-  void restoreRebootState();
-}, []);
+    const scrollRef = useRef<HTMLDivElement>(null);
 
-useEffect(() => {
-  if (!isRebooting) {
-    return;
-  }
+    const dragState = useRef({
+        active: false,
+        startY: 0,
+        startScrollTop: 0,
+        moved: false,
+    });
 
-  let isCancelled = false;
-
-  const loadProgress = async () => {
-    try {
-      const response = await fetch(
-        `/api/system/reboot-status?t=${Date.now()}`,
-        {
-          method: "GET",
-          cache: "no-store",
-        },
-      );
-
-      if (!response.ok) {
-        return;
-      }
-
-      const data =
-        (await response.json()) as RebootProgress;
-
-      if (isCancelled) {
-        return;
-      }
-
-      /*
-       * Un ancien statut "idle" peut être retourné
-       * durant les premières millisecondes.
-       *
-       * Il ne doit surtout jamais fermer la popup.
-       */
-      if (data.status === "idle") {
-        return;
-      }
-
-      setRebootProgress(data);
-
-      if (data.status === "error") {
-        window.localStorage.removeItem(
-          REBOOT_STORAGE_KEY,
-        );
-
-        setRebootError(
-          data.error ??
-            "La mise à jour a échoué.",
-        );
-
-        setIsRebooting(false);
+    const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+        const target = event.target as HTMLElement;
 
         /*
-         * On garde volontairement la popup ouverte
-         * afin que l'erreur reste visible.
+         * On ne démarre pas le scroll tactile lorsqu'on
+         * appuie sur un élément interactif.
          */
-      }
-    } catch {
-      /*
-       * Dès que le Raspberry s'arrête, l'API devient
-       * inaccessible. On verrouille alors l'affichage
-       * à 100 % jusqu'à l'extinction/rechargement.
-       */
-      if (!isCancelled) {
-        setRebootProgress({
-          status: "rebooting",
-          progress: 100,
-          message:
-            "Le système va redémarrer dans un instant. Veuillez patienter.",
-          error: null,
+        if (
+            target.closest(
+                "button, a, input, textarea, select, label, [role='button']",
+            )
+        ) {
+            return;
+        }
+
+        const container = scrollRef.current;
+
+        if (!container) {
+            return;
+        }
+
+        dragState.current = {
+            active: true,
+            startY: event.clientY,
+            startScrollTop: container.scrollTop,
+            moved: false,
+        };
+
+        try {
+            container.setPointerCapture(event.pointerId);
+        } catch {
+            /*
+             * Certains navigateurs ou écrans tactiles
+             * ne prennent pas en charge le pointer capture.
+             */
+        }
+    };
+
+    const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+        const container = scrollRef.current;
+
+        if (!container || !dragState.current.active) {
+            return;
+        }
+
+        const distance = event.clientY - dragState.current.startY;
+
+        if (Math.abs(distance) > 4) {
+            dragState.current.moved = true;
+        }
+
+        container.scrollTop = dragState.current.startScrollTop - distance;
+
+        /*
+         * Empêche le navigateur de sélectionner le texte
+         * ou d'interpréter le geste autrement.
+         */
+        event.preventDefault();
+    };
+
+    const handlePointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+        const container = scrollRef.current;
+
+        dragState.current.active = false;
+
+        if (container && container.hasPointerCapture(event.pointerId)) {
+            container.releasePointerCapture(event.pointerId);
+        }
+    };
+
+    useEffect(() => {
+        void checkForUpdates();
+
+        const interval = window.setInterval(
+            () => {
+                void checkForUpdates();
+            },
+            10 * 60 * 1000,
+        );
+
+        return () => {
+            window.clearInterval(interval);
+        };
+    }, []);
+
+    useEffect(() => {
+        setLatitudeInput(String(settings.weatherLatitude).replace(".", ","));
+
+        setLongitudeInput(String(settings.weatherLongitude).replace(".", ","));
+    }, [settings.weatherLatitude, settings.weatherLongitude]);
+
+    useEffect(() => {
+        const restoreRebootState = async () => {
+            const rebootWasInProgress =
+                window.localStorage.getItem(REBOOT_STORAGE_KEY) === "true";
+
+            if (!rebootWasInProgress) {
+                return;
+            }
+
+            try {
+                const response = await fetch(
+                    `/api/system/reboot-status?t=${Date.now()}`,
+                    {
+                        method: "GET",
+                        cache: "no-store",
+                    },
+                );
+
+                if (!response.ok) {
+                    throw new Error(`Erreur HTTP ${response.status}`);
+                }
+
+                const data = (await response.json()) as RebootProgress;
+
+                /*
+                 * Le nouveau serveur est démarré :
+                 * le redémarrage précédent est terminé.
+                 */
+                if (data.status === "idle") {
+                    window.localStorage.removeItem(REBOOT_STORAGE_KEY);
+
+                    return;
+                }
+
+                setShowRebootConfirmation(true);
+                setIsRebooting(true);
+                setRebootProgress(data);
+            } catch {
+                /*
+                 * Le serveur est encore indisponible :
+                 * on garde l'état de redémarrage.
+                 */
+                setShowRebootConfirmation(true);
+                setIsRebooting(true);
+
+                setRebootProgress({
+                    status: "rebooting",
+                    progress: 100,
+                    message:
+                        "Le système va redémarrer dans un instant. Veuillez patienter.",
+                    error: null,
+                });
+            }
+        };
+
+        void restoreRebootState();
+    }, []);
+
+    useEffect(() => {
+        if (!isRebooting) {
+            return;
+        }
+
+        let isCancelled = false;
+
+        const loadProgress = async () => {
+            try {
+                const response = await fetch(
+                    `/api/system/reboot-status?t=${Date.now()}`,
+                    {
+                        method: "GET",
+                        cache: "no-store",
+                    },
+                );
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const data = (await response.json()) as RebootProgress;
+
+                if (isCancelled) {
+                    return;
+                }
+
+                /*
+                 * Un ancien statut "idle" peut être retourné
+                 * durant les premières millisecondes.
+                 *
+                 * Il ne doit surtout jamais fermer la popup.
+                 */
+                if (data.status === "idle") {
+                    return;
+                }
+
+                setRebootProgress(data);
+
+                if (data.status === "error") {
+                    window.localStorage.removeItem(REBOOT_STORAGE_KEY);
+
+                    setRebootError(data.error ?? "La mise à jour a échoué.");
+
+                    setIsRebooting(false);
+
+                    /*
+                     * On garde volontairement la popup ouverte
+                     * afin que l'erreur reste visible.
+                     */
+                }
+            } catch {
+                /*
+                 * Dès que le Raspberry s'arrête, l'API devient
+                 * inaccessible. On verrouille alors l'affichage
+                 * à 100 % jusqu'à l'extinction/rechargement.
+                 */
+                if (!isCancelled) {
+                    setRebootProgress({
+                        status: "rebooting",
+                        progress: 100,
+                        message:
+                            "Le système va redémarrer dans un instant. Veuillez patienter.",
+                        error: null,
+                    });
+                }
+            }
+        };
+
+        void loadProgress();
+
+        const intervalId = window.setInterval(() => {
+            void loadProgress();
+        }, 1000);
+
+        return () => {
+            isCancelled = true;
+            window.clearInterval(intervalId);
+        };
+    }, [isRebooting]);
+
+    function update<K extends keyof AppSettings>(
+        key: K,
+        value: AppSettings[K],
+    ) {
+        onUpdateSettings({
+            ...settings,
+            [key]: value,
         });
-      }
-    }
-  };
-
-  void loadProgress();
-
-  const intervalId = window.setInterval(() => {
-    void loadProgress();
-  }, 1000);
-
-  return () => {
-    isCancelled = true;
-    window.clearInterval(intervalId);
-  };
-}, [isRebooting]);
-
-  function update<K extends keyof AppSettings>(
-    key: K,
-    value: AppSettings[K],
-  ) {
-    onUpdateSettings({
-      ...settings,
-      [key]: value,
-    });
-  }
-
-  function sanitizeCoordinate(value: string) {
-    let sanitizedValue = value
-      .replace(/\./g, ",")
-      .replace(/[^\d,-]/g, "");
-
-    const isNegative = sanitizedValue.startsWith("-");
-
-    sanitizedValue = sanitizedValue.replace(/-/g, "");
-
-    const [integerPart = "", ...decimalParts] =
-      sanitizedValue.split(",");
-
-    const decimalPart = decimalParts.join("");
-
-    sanitizedValue =
-      decimalParts.length > 0
-        ? `${integerPart},${decimalPart}`
-        : integerPart;
-
-    if (isNegative) {
-      sanitizedValue = `-${sanitizedValue}`;
     }
 
-    return sanitizedValue;
-  }
+    function sanitizeCoordinate(value: string) {
+        let sanitizedValue = value.replace(/\./g, ",").replace(/[^\d,-]/g, "");
 
-  function parseCoordinate(value: string) {
-    return Number(value.replace(",", "."));
-  }
+        const isNegative = sanitizedValue.startsWith("-");
 
-  function handleLatitudeChange(value: string) {
-    setLatitudeInput(sanitizeCoordinate(value));
-  }
+        sanitizedValue = sanitizedValue.replace(/-/g, "");
 
-  function handleLongitudeChange(value: string) {
-    setLongitudeInput(sanitizeCoordinate(value));
-  }
+        const [integerPart = "", ...decimalParts] = sanitizedValue.split(",");
 
-  function saveLatitude() {
-    const parsedLatitude = parseCoordinate(latitudeInput);
+        const decimalPart = decimalParts.join("");
 
-    if (
-      !Number.isFinite(parsedLatitude) ||
-      parsedLatitude < -90 ||
-      parsedLatitude > 90
-    ) {
-      setLatitudeInput(
-        String(settings.weatherLatitude).replace(".", ","),
-      );
+        sanitizedValue =
+            decimalParts.length > 0
+                ? `${integerPart},${decimalPart}`
+                : integerPart;
 
-      return;
+        if (isNegative) {
+            sanitizedValue = `-${sanitizedValue}`;
+        }
+
+        return sanitizedValue;
     }
 
-    update("weatherLatitude", parsedLatitude);
-
-    setLatitudeInput(
-      String(parsedLatitude).replace(".", ","),
-    );
-  }
-
-  function saveLongitude() {
-    const parsedLongitude = parseCoordinate(longitudeInput);
-
-    if (
-      !Number.isFinite(parsedLongitude) ||
-      parsedLongitude < -180 ||
-      parsedLongitude > 180
-    ) {
-      setLongitudeInput(
-        String(settings.weatherLongitude).replace(".", ","),
-      );
-
-      return;
+    function parseCoordinate(value: string) {
+        return Number(value.replace(",", "."));
     }
 
-    update("weatherLongitude", parsedLongitude);
-
-    setLongitudeInput(
-      String(parsedLongitude).replace(".", ","),
-    );
-  }
-
-  function exportJson() {
-    const data = {
-      settings,
-      budgets,
-      operations,
-      goals,
-      netWorthSnapshots,
-      exportedAt: new Date().toISOString(),
-    };
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download = "lifeboard-sauvegarde.json";
-    link.click();
-
-    URL.revokeObjectURL(url);
-  }
-
-  function importJson(
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) {
-    const file = event.target.files?.[0];
-
-    if (!file) return;
-
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      try {
-        const data = JSON.parse(String(reader.result));
-        onImportData(data);
-      } catch {
-        alert("Fichier JSON invalide.");
-      }
-    };
-
-    reader.readAsText(file);
-  }
-
-  async function checkForUpdates() {
-  setIsCheckingUpdate(true);
-  setUpdateCheckError(null);
-
-  try {
-    const response = await fetch(
-      "/api/system/update-status",
-      {
-        method: "GET",
-        cache: "no-store",
-      },
-    );
-
-    const data = await response
-      .json()
-      .catch(() => null);
-
-    if (!response.ok) {
-      throw new Error(
-        data?.message ??
-          `Erreur HTTP ${response.status}`,
-      );
+    function handleLatitudeChange(value: string) {
+        setLatitudeInput(sanitizeCoordinate(value));
     }
 
-    setUpdateStatus(data);
-  } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Impossible de vérifier les mises à jour.";
-
-    console.error(
-      "Erreur pendant la vérification des mises à jour :",
-      error,
-    );
-
-    setUpdateCheckError(message);
-    setUpdateStatus(null);
-  } finally {
-    setIsCheckingUpdate(false);
-  }
-}
-
-  async function updateAndReboot() {
-  if (isRebooting) {
-    return;
-  }
-
-  window.localStorage.setItem(
-    REBOOT_STORAGE_KEY,
-    "true",
-  );
-
-  setShowRebootConfirmation(true);
-  setIsRebooting(true);
-  setRebootError(null);
-
-  setRebootProgress({
-    status: "running",
-    progress: 1,
-    message: "Lancement de la mise à jour…",
-    error: null,
-  });
-
-  try {
-    const response = await fetch(
-      "/api/system/reboot",
-      {
-        method: "POST",
-      },
-    );
-
-    const data = await response
-      .json()
-      .catch(() => null);
-
-    if (!response.ok) {
-      throw new Error(
-        data?.message ??
-          `Erreur HTTP ${response.status}`,
-      );
+    function handleLongitudeChange(value: string) {
+        setLongitudeInput(sanitizeCoordinate(value));
     }
-  } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Impossible de lancer le redémarrage.";
 
-    console.error(
-      "Erreur pendant le redémarrage :",
-      error,
-    );
+    function saveLatitude() {
+        const parsedLatitude = parseCoordinate(latitudeInput);
 
-    window.localStorage.removeItem(
-      REBOOT_STORAGE_KEY,
-    );
+        if (
+            !Number.isFinite(parsedLatitude) ||
+            parsedLatitude < -90 ||
+            parsedLatitude > 90
+        ) {
+            setLatitudeInput(
+                String(settings.weatherLatitude).replace(".", ","),
+            );
 
-    setRebootError(message);
-    setIsRebooting(false);
+            return;
+        }
 
-    setRebootProgress({
-      status: "error",
-      progress: 0,
-      message: "La mise à jour a échoué.",
-      error: message,
-    });
-  }
-}
+        update("weatherLatitude", parsedLatitude);
 
-  return (
-  <div
-    className="
+        setLatitudeInput(String(parsedLatitude).replace(".", ","));
+    }
+
+    function saveLongitude() {
+        const parsedLongitude = parseCoordinate(longitudeInput);
+
+        if (
+            !Number.isFinite(parsedLongitude) ||
+            parsedLongitude < -180 ||
+            parsedLongitude > 180
+        ) {
+            setLongitudeInput(
+                String(settings.weatherLongitude).replace(".", ","),
+            );
+
+            return;
+        }
+
+        update("weatherLongitude", parsedLongitude);
+
+        setLongitudeInput(String(parsedLongitude).replace(".", ","));
+    }
+
+    function exportJson() {
+        const data = {
+            settings,
+            budgets,
+            operations,
+            goals,
+            netWorthSnapshots,
+            exportedAt: new Date().toISOString(),
+        };
+
+        const blob = new Blob([JSON.stringify(data, null, 2)], {
+            type: "application/json",
+        });
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+
+        link.href = url;
+        link.download = "lifeboard-sauvegarde.json";
+        link.click();
+
+        URL.revokeObjectURL(url);
+    }
+
+    function importJson(event: React.ChangeEvent<HTMLInputElement>) {
+        const file = event.target.files?.[0];
+
+        if (!file) return;
+
+        const reader = new FileReader();
+
+        reader.onload = () => {
+            try {
+                const data = JSON.parse(String(reader.result));
+                onImportData(data);
+            } catch {
+                alert("Fichier JSON invalide.");
+            }
+        };
+
+        reader.readAsText(file);
+    }
+
+    async function checkForUpdates() {
+        setIsCheckingUpdate(true);
+        setUpdateCheckError(null);
+
+        try {
+            const response = await fetch("/api/system/update-status", {
+                method: "GET",
+                cache: "no-store",
+            });
+
+            const data = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(
+                    data?.message ?? `Erreur HTTP ${response.status}`,
+                );
+            }
+
+            setUpdateStatus(data);
+        } catch (error) {
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : "Impossible de vérifier les mises à jour.";
+
+            console.error(
+                "Erreur pendant la vérification des mises à jour :",
+                error,
+            );
+
+            setUpdateCheckError(message);
+            setUpdateStatus(null);
+        } finally {
+            setIsCheckingUpdate(false);
+        }
+    }
+
+    async function updateAndReboot() {
+        if (isRebooting) {
+            return;
+        }
+
+        window.localStorage.setItem(REBOOT_STORAGE_KEY, "true");
+
+        setShowRebootConfirmation(true);
+        setIsRebooting(true);
+        setRebootError(null);
+
+        setRebootProgress({
+            status: "running",
+            progress: 1,
+            message: "Lancement de la mise à jour…",
+            error: null,
+        });
+
+        try {
+            const response = await fetch("/api/system/reboot", {
+                method: "POST",
+            });
+
+            const data = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(
+                    data?.message ?? `Erreur HTTP ${response.status}`,
+                );
+            }
+        } catch (error) {
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : "Impossible de lancer le redémarrage.";
+
+            console.error("Erreur pendant le redémarrage :", error);
+
+            window.localStorage.removeItem(REBOOT_STORAGE_KEY);
+
+            setRebootError(message);
+            setIsRebooting(false);
+
+            setRebootProgress({
+                status: "error",
+                progress: 0,
+                message: "La mise à jour a échoué.",
+                error: message,
+            });
+        }
+    }
+
+    return (
+        <div
+            className="
       flex min-h-0 flex-1 flex-col overflow-hidden
       rounded-2xl border border-white/10
       bg-[#0b1623] p-6
     "
-  >
-    <div className="mb-6 shrink-0">
-      <h2 className="text-3xl font-bold">
-        Paramètres
-      </h2>
+        >
+            <div className="mb-6 shrink-0">
+                <h2 className="text-3xl font-bold">Paramètres</h2>
 
-      <p className="text-slate-400">
-        Configuration générale de LifeBoard.
-      </p>
-    </div>
+                <p className="text-slate-400">
+                    Configuration générale de LifeBoard.
+                </p>
+            </div>
 
-    <div
-      ref={scrollRef}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerEnd}
-      onPointerCancel={handlePointerEnd}
-      className="
+            <div
+                ref={scrollRef}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerEnd}
+                onPointerCancel={handlePointerEnd}
+                className="
         grid min-h-0 flex-1 grid-cols-2
         content-start gap-6 overflow-y-auto
         overscroll-contain pr-2 pb-32
         select-none
       "
-      style={{
-        WebkitOverflowScrolling: "touch",
-        touchAction: "none",
-        cursor: dragState.current.active
-          ? "grabbing"
-          : "grab",
-      }}
-    >
-        <Section title="Profil">
-          <Field label="Prénom">
-            <input
-              value={settings.firstName}
-              onChange={(event) =>
-                update("firstName", event.target.value)
-              }
-              className="input select-text"
-            />
-          </Field>
-        </Section>
-
-        <Section title="Météo">
-          <Field label="Ville">
-            <input
-              value={settings.weatherCity}
-              onChange={(event) =>
-                update("weatherCity", event.target.value)
-              }
-              className="input select-text"
-            />
-          </Field>
-
-          <Field label="Latitude">
-            <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-2">
-                <input
-                type="text"
-                inputMode="decimal"
-                pattern="-?[0-9]*[.,]?[0-9]*"
-                autoComplete="off"
-                value={latitudeInput}
-                onChange={(event) =>
-                    handleLatitudeChange(event.target.value)
-                }
-                onBlur={saveLatitude}
-                onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                    saveLatitude();
-                    event.currentTarget.blur();
-                    }
+                style={{
+                    WebkitOverflowScrolling: "touch",
+                    touchAction: "none",
+                    cursor: dragState.current.active ? "grabbing" : "grab",
                 }}
-                placeholder="50,6292"
-                className="min-w-0 flex-1 bg-transparent select-text px-2 py-3 text-white outline-none"
-                />
-
-                <button
-                type="button"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => {
-                    if (!latitudeInput.includes(",")) {
-                    setLatitudeInput((currentValue) => {
-                        if (currentValue === "" || currentValue === "-") {
-                        return currentValue === "-" ? "-0," : "0,";
-                        }
-
-                        return `${currentValue},`;
-                    });
-                    }
-                }}
-                className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-lg font-bold text-white active:bg-white/20"
-                >
-                ,
-                </button>
-            </div>
-          </Field>
-
-          <Field label="Longitude">
-            <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-2">
-                <input
-                type="text"
-                inputMode="decimal"
-                pattern="-?[0-9]*[.,]?[0-9]*"
-                autoComplete="off"
-                value={longitudeInput}
-                onChange={(event) =>
-                    handleLongitudeChange(event.target.value)
-                }
-                onBlur={saveLongitude}
-                onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                    saveLongitude();
-                    event.currentTarget.blur();
-                    }
-                }}
-                placeholder="3,0573"
-                className="min-w-0 flex-1 bg-transparent select-text px-2 py-3 text-white outline-none"
-                />
-
-                <button
-                type="button"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => {
-                    if (!longitudeInput.includes(",")) {
-                    setLongitudeInput((currentValue) => {
-                        if (currentValue === "" || currentValue === "-") {
-                        return currentValue === "-" ? "-0," : "0,";
-                        }
-
-                        return `${currentValue},`;
-                    });
-                    }
-                }}
-                className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-lg font-bold text-white active:bg-white/20"
-                >
-                ,
-                </button>
-            </div>
-          </Field>
-        </Section>
-
-        <Section title="Calendrier">
-          <Field label="Jour du salaire">
-            <input
-              type="number"
-              value={settings.salaryDay}
-              onChange={(event) =>
-                update(
-                  "salaryDay",
-                  Number(event.target.value),
-                )
-              }
-              className="input select-text"
-            />
-          </Field>
-
-          <Field label="Reset des budgets">
-            <input
-              type="number"
-              value={settings.budgetResetDay}
-              onChange={(event) =>
-                update(
-                  "budgetResetDay",
-                  Number(event.target.value),
-                )
-              }
-              className="input select-text"
-            />
-          </Field>
-        </Section>
-
-        <Section title="Sécurité financière">
-          <Field label="Montant minimum à conserver sur le Livret A">
-            <input
-              type="number"
-              value={settings.livretASafetyAmount}
-              onChange={(event) =>
-                update(
-                  "livretASafetyAmount",
-                  Number(event.target.value),
-                )
-              }
-              className="input select-text"
-            />
-          </Field>
-        </Section>
-
-        <Section title="Apparence">
-          <Field label="Thème">
-            <select
-              value={settings.theme}
-              onChange={(event) =>
-                update(
-                  "theme",
-                  event.target.value as AppSettings["theme"],
-                )
-              }
-              className="input select-text"
             >
-              <option
-                className="bg-[#0b1623]"
-                value="dark"
-              >
-                Sombre
-              </option>
-            </select>
-          </Field>
-        </Section>
+                <Section title="Profil">
+                    <Field label="Prénom">
+                        <input
+                            value={settings.firstName}
+                            onChange={(event) =>
+                                update("firstName", event.target.value)
+                            }
+                            className="input select-text"
+                        />
+                    </Field>
+                </Section>
 
-        <Section title="Sauvegarde">
-          <div className="flex gap-3">
-            <AnimatedButton
-              type="button"
-              onClick={exportJson}
-              className="rounded-xl bg-purple-500 px-4 py-3 font-semibold text-white"
-            >
-              Exporter JSON
-            </AnimatedButton>
+                <Section title="Météo">
+                    <Field label="Ville">
+                        <input
+                            value={settings.weatherCity}
+                            onChange={(event) =>
+                                update("weatherCity", event.target.value)
+                            }
+                            className="input select-text"
+                        />
+                    </Field>
 
-            <motion.label
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.95 }}
-              transition={{
-                type: "spring",
-                stiffness: 420,
-                damping: 24,
-              }}
-              className="cursor-pointer rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 font-semibold text-white"
-            >
-              Importer JSON
+                    <Field label="Latitude">
+                        <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-2">
+                            <input
+                                type="text"
+                                inputMode="decimal"
+                                pattern="-?[0-9]*[.,]?[0-9]*"
+                                autoComplete="off"
+                                value={latitudeInput}
+                                onChange={(event) =>
+                                    handleLatitudeChange(event.target.value)
+                                }
+                                onBlur={saveLatitude}
+                                onKeyDown={(event) => {
+                                    if (event.key === "Enter") {
+                                        saveLatitude();
+                                        event.currentTarget.blur();
+                                    }
+                                }}
+                                placeholder="50,6292"
+                                className="min-w-0 flex-1 bg-transparent select-text px-2 py-3 text-white outline-none"
+                            />
 
-              <input
-                type="file"
-                accept="application/json"
-                onChange={importJson}
-                className="hidden"
-              />
-            </motion.label>
-          </div>
-        </Section>
+                            <button
+                                type="button"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => {
+                                    if (!latitudeInput.includes(",")) {
+                                        setLatitudeInput((currentValue) => {
+                                            if (
+                                                currentValue === "" ||
+                                                currentValue === "-"
+                                            ) {
+                                                return currentValue === "-"
+                                                    ? "-0,"
+                                                    : "0,";
+                                            }
 
-        <Section title="Système">
-  <p className="text-sm leading-relaxed text-slate-400">
-    Récupère la dernière version de LifeBoard,
-    compile l’application puis redémarre le
-    Raspberry Pi.
-  </p>
+                                            return `${currentValue},`;
+                                        });
+                                    }
+                                }}
+                                className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-lg font-bold text-white active:bg-white/20"
+                            >
+                                ,
+                            </button>
+                        </div>
+                    </Field>
 
-  {isCheckingUpdate && (
-    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-4 text-slate-300">
-      <div className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                    <Field label="Longitude">
+                        <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-2">
+                            <input
+                                type="text"
+                                inputMode="decimal"
+                                pattern="-?[0-9]*[.,]?[0-9]*"
+                                autoComplete="off"
+                                value={longitudeInput}
+                                onChange={(event) =>
+                                    handleLongitudeChange(event.target.value)
+                                }
+                                onBlur={saveLongitude}
+                                onKeyDown={(event) => {
+                                    if (event.key === "Enter") {
+                                        saveLongitude();
+                                        event.currentTarget.blur();
+                                    }
+                                }}
+                                placeholder="3,0573"
+                                className="min-w-0 flex-1 bg-transparent select-text px-2 py-3 text-white outline-none"
+                            />
 
-      <span className="text-sm font-medium">
-        Vérification des mises à jour…
-      </span>
-    </div>
-  )}
+                            <button
+                                type="button"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => {
+                                    if (!longitudeInput.includes(",")) {
+                                        setLongitudeInput((currentValue) => {
+                                            if (
+                                                currentValue === "" ||
+                                                currentValue === "-"
+                                            ) {
+                                                return currentValue === "-"
+                                                    ? "-0,"
+                                                    : "0,";
+                                            }
 
-  {!isCheckingUpdate &&
-    updateStatus?.updateAvailable && (
-      <div className="flex items-start gap-3 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4 text-amber-300">
-        <TriangleAlert
-          size={24}
-          className="mt-0.5 shrink-0"
-        />
+                                            return `${currentValue},`;
+                                        });
+                                    }
+                                }}
+                                className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-lg font-bold text-white active:bg-white/20"
+                            >
+                                ,
+                            </button>
+                        </div>
+                    </Field>
+                </Section>
 
-        <div>
-          <p className="font-bold">
-            Des mises à jour de l’application sont
-            disponibles
-          </p>
+                <Section title="Calendrier">
+                    <Field label="Jour du salaire">
+                        <input
+                            type="number"
+                            value={settings.salaryDay}
+                            onChange={(event) =>
+                                update("salaryDay", Number(event.target.value))
+                            }
+                            className="input select-text"
+                        />
+                    </Field>
 
-          {typeof updateStatus.behindCount ===
-            "number" &&
-            updateStatus.behindCount > 0 && (
-              <p className="mt-1 text-sm text-amber-200/75">
-                {updateStatus.behindCount === 1
-                  ? "1 modification distante est disponible."
-                  : `${updateStatus.behindCount} modifications distantes sont disponibles.`}
-              </p>
-            )}
-        </div>
-      </div>
-    )}
+                    <Field label="Reset des budgets">
+                        <input
+                            type="number"
+                            value={settings.budgetResetDay}
+                            onChange={(event) =>
+                                update(
+                                    "budgetResetDay",
+                                    Number(event.target.value),
+                                )
+                            }
+                            className="input select-text"
+                        />
+                    </Field>
+                </Section>
 
-  {!isCheckingUpdate &&
-    updateStatus &&
-    !updateStatus.updateAvailable && (
-      <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm font-medium text-emerald-300">
-        LifeBoard est à jour.
-      </div>
-    )}
+                <Section title="Sécurité financière">
+                    <Field label="Montant minimum à conserver sur le Livret A">
+                        <input
+                            type="number"
+                            value={settings.livretASafetyAmount}
+                            onChange={(event) =>
+                                update(
+                                    "livretASafetyAmount",
+                                    Number(event.target.value),
+                                )
+                            }
+                            className="input select-text"
+                        />
+                    </Field>
+                </Section>
 
-  {updateCheckError && (
-    <div className="rounded-xl border border-amber-400/20 bg-amber-500/10 p-4">
-      <p className="text-sm text-amber-300">
-        Impossible de vérifier automatiquement les
-        mises à jour.
-      </p>
+                <Section title="Apparence">
+                    <Field label="Thème">
+                        <select
+                            value={settings.theme}
+                            onChange={(event) =>
+                                update(
+                                    "theme",
+                                    event.target.value as AppSettings["theme"],
+                                )
+                            }
+                            className="input select-text"
+                        >
+                            <option className="bg-[#0b1623]" value="dark">
+                                Sombre
+                            </option>
+                        </select>
+                    </Field>
+                </Section>
 
-      <button
-        type="button"
-        onPointerUp={(event) => {
-          event.stopPropagation();
-          void checkForUpdates();
-        }}
-        onClick={(event) => {
-          if (event.detail === 0) {
-            void checkForUpdates();
-          }
-        }}
-        className="mt-3 rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-sm font-bold text-amber-200 active:bg-amber-500/20"
-        style={{
-          touchAction: "none",
-        }}
-      >
-        Réessayer
-      </button>
-    </div>
-  )}
+                <Section title="Sauvegarde">
+                    <div className="flex gap-3">
+                        <AnimatedButton
+                            type="button"
+                            onClick={exportJson}
+                            className="rounded-xl bg-purple-500 px-4 py-3 font-semibold text-white"
+                        >
+                            Exporter JSON
+                        </AnimatedButton>
 
-  {rebootError && (
-    <div className="rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-300">
-      {rebootError}
-    </div>
-  )}
+                        <motion.label
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.95 }}
+                            transition={{
+                                type: "spring",
+                                stiffness: 420,
+                                damping: 24,
+                            }}
+                            className="cursor-pointer rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 font-semibold text-white"
+                        >
+                            Importer JSON
+                            <input
+                                type="file"
+                                accept="application/json"
+                                onChange={importJson}
+                                className="hidden"
+                            />
+                        </motion.label>
+                    </div>
+                </Section>
 
-  <button
-    type="button"
-    disabled={isRebooting}
-    onPointerUp={(event) => {
-      event.stopPropagation();
+                <Section title="Système">
+                    <p className="text-sm leading-relaxed text-slate-400">
+                        Récupère la dernière version de LifeBoard, compile
+                        l’application puis redémarre le Raspberry Pi.
+                    </p>
 
-      if (!isRebooting) {
-        setShowRebootConfirmation(true);
-      }
-    }}
-    onClick={(event) => {
-      if (
-        event.detail === 0 &&
-        !isRebooting
-      ) {
-        setShowRebootConfirmation(true);
-      }
-    }}
-    className={`
+                    {isCheckingUpdate && (
+                        <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-4 text-slate-300">
+                            <div className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+
+                            <span className="text-sm font-medium">
+                                Vérification des mises à jour…
+                            </span>
+                        </div>
+                    )}
+
+                    {!isCheckingUpdate && updateStatus?.updateAvailable && (
+                        <div className="flex items-start gap-3 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4 text-amber-300">
+                            <TriangleAlert
+                                size={24}
+                                className="mt-0.5 shrink-0"
+                            />
+
+                            <div>
+                                <p className="font-bold">
+                                    Des mises à jour de l’application sont
+                                    disponibles
+                                </p>
+
+                                {typeof updateStatus.behindCount === "number" &&
+                                    updateStatus.behindCount > 0 && (
+                                        <p className="mt-1 text-sm text-amber-200/75">
+                                            {updateStatus.behindCount === 1
+                                                ? "1 modification distante est disponible."
+                                                : `${updateStatus.behindCount} modifications distantes sont disponibles.`}
+                                        </p>
+                                    )}
+                            </div>
+                        </div>
+                    )}
+
+                    {!isCheckingUpdate &&
+                        updateStatus &&
+                        !updateStatus.updateAvailable && (
+                            <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm font-medium text-emerald-300">
+                                LifeBoard est à jour.
+                            </div>
+                        )}
+
+                    {updateCheckError && (
+                        <div className="rounded-xl border border-amber-400/20 bg-amber-500/10 p-4">
+                            <p className="text-sm text-amber-300">
+                                Impossible de vérifier automatiquement les mises
+                                à jour.
+                            </p>
+
+                            <button
+                                type="button"
+                                onPointerUp={(event) => {
+                                    event.stopPropagation();
+                                    void checkForUpdates();
+                                }}
+                                onClick={(event) => {
+                                    if (event.detail === 0) {
+                                        void checkForUpdates();
+                                    }
+                                }}
+                                className="mt-3 rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-sm font-bold text-amber-200 active:bg-amber-500/20"
+                                style={{
+                                    touchAction: "none",
+                                }}
+                            >
+                                Réessayer
+                            </button>
+                        </div>
+                    )}
+
+                    {rebootError && (
+                        <div className="rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-300">
+                            {rebootError}
+                        </div>
+                    )}
+
+                    <button
+                        type="button"
+                        disabled={isRebooting}
+                        onPointerUp={(event) => {
+                            event.stopPropagation();
+
+                            if (!isRebooting) {
+                                setShowRebootConfirmation(true);
+                            }
+                        }}
+                        onClick={(event) => {
+                            if (event.detail === 0 && !isRebooting) {
+                                setShowRebootConfirmation(true);
+                            }
+                        }}
+                        className={`
       flex w-full items-center justify-center gap-3
       rounded-xl px-5 py-4
       font-bold text-white
       disabled:cursor-not-allowed
       disabled:opacity-50
       ${
-        updateStatus?.updateAvailable
-          ? "bg-amber-600 active:bg-amber-700"
-          : "bg-red-600 active:bg-red-700"
+          updateStatus?.updateAvailable
+              ? "bg-amber-600 active:bg-amber-700"
+              : "bg-red-600 active:bg-red-700"
       }
     `}
-    style={{
-      touchAction: "none",
-    }}
-  >
-    {updateStatus?.updateAvailable ? (
-      <TriangleAlert size={22} />
-    ) : (
-      <Power size={22} />
-    )}
+                        style={{
+                            touchAction: "none",
+                        }}
+                    >
+                        {updateStatus?.updateAvailable ? (
+                            <TriangleAlert size={22} />
+                        ) : (
+                            <Power size={22} />
+                        )}
 
-    {isRebooting
-      ? "Mise à jour en cours..."
-      : updateStatus?.updateAvailable
-        ? "Installer la mise à jour et redémarrer"
-        : "Mettre à jour et redémarrer"}
-  </button>
-</Section>
-      </div>
-      {showRebootConfirmation && (
-  <div
-    className="
+                        {isRebooting
+                            ? "Mise à jour en cours..."
+                            : updateStatus?.updateAvailable
+                              ? "Installer la mise à jour et redémarrer"
+                              : "Mettre à jour et redémarrer"}
+                    </button>
+                </Section>
+            </div>
+            {showRebootConfirmation && (
+                <div
+                    className="
       fixed inset-0 z-[70] flex items-center
       justify-center bg-black/75 p-6
       backdrop-blur-sm
     "
-    style={{
-      touchAction: "none",
-    }}
-  >
-    <div className="w-full max-w-lg rounded-2xl border border-red-400/30 bg-[#0b1623] p-8 shadow-2xl">
-      <div className="flex items-start justify-between gap-5">
-        <div>
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-500/15 text-red-300">
-            <Power size={30} />
-          </div>
+                    style={{
+                        touchAction: "none",
+                    }}
+                >
+                    <div className="w-full max-w-lg rounded-2xl border border-red-400/30 bg-[#0b1623] p-8 shadow-2xl">
+                        <div className="flex items-start justify-between gap-5">
+                            <div>
+                                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-500/15 text-red-300">
+                                    <Power size={30} />
+                                </div>
 
-          <h2 className="text-2xl font-bold">
-            Mettre à jour LifeBoard ?
-          </h2>
-        </div>
+                                <h2 className="text-2xl font-bold">
+                                    Mettre à jour LifeBoard ?
+                                </h2>
+                            </div>
 
-        {!isRebooting && (
-          <button
-            type="button"
-            onPointerUp={(event) => {
-              event.stopPropagation();
-              setShowRebootConfirmation(false);
-            }}
-            onClick={(event) => {
-              if (event.detail === 0) {
-                setShowRebootConfirmation(false);
-              }
-            }}
-            className="rounded-lg p-2 active:bg-white/15"
-            style={{
-              touchAction: "none",
-            }}
-            aria-label="Fermer"
-          >
-            <X />
-          </button>
-        )}
-      </div>
+                            {!isRebooting && (
+                                <button
+                                    type="button"
+                                    onPointerUp={(event) => {
+                                        event.stopPropagation();
+                                        setShowRebootConfirmation(false);
+                                    }}
+                                    onClick={(event) => {
+                                        if (event.detail === 0) {
+                                            setShowRebootConfirmation(false);
+                                        }
+                                    }}
+                                    className="rounded-lg p-2 active:bg-white/15"
+                                    style={{
+                                        touchAction: "none",
+                                    }}
+                                    aria-label="Fermer"
+                                >
+                                    <X />
+                                </button>
+                            )}
+                        </div>
 
-      {isRebooting ? (
-  <div className="mt-6">
-    <div className="text-center">
-      <div className="mx-auto mb-6 h-12 w-12 animate-spin rounded-full border-4 border-red-400 border-t-transparent" />
+                        {isRebooting ? (
+                            <div className="mt-6">
+                                <div className="text-center">
+                                    <div className="mx-auto mb-6 h-12 w-12 animate-spin rounded-full border-4 border-red-400 border-t-transparent" />
 
-      <p className="text-xl font-bold">
-  {rebootProgress.status === "rebooting"
-    ? "Mise à jour terminée"
-    : "Mise à jour en cours…"}
-</p>
+                                    <p className="text-xl font-bold">
+                                        {rebootProgress.status === "rebooting"
+                                            ? "Mise à jour terminée"
+                                            : "Mise à jour en cours…"}
+                                    </p>
 
-      <p className="mt-3 min-h-12 text-slate-400">
-        {rebootProgress.message}
-      </p>
-    </div>
+                                    <p className="mt-3 min-h-12 text-slate-400">
+                                        {rebootProgress.message}
+                                    </p>
+                                </div>
 
-    <div className="mt-7">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm font-medium text-slate-400">
-          Progression
-        </span>
+                                <div className="mt-7">
+                                    <div className="mb-2 flex items-center justify-between">
+                                        <span className="text-sm font-medium text-slate-400">
+                                            Progression
+                                        </span>
 
-        <span className="text-lg font-bold text-red-300">
-          {Math.max(
-            0,
-            Math.min(100, rebootProgress.progress),
-          )}
-          %
-        </span>
-      </div>
+                                        <span className="text-lg font-bold text-red-300">
+                                            {Math.max(
+                                                0,
+                                                Math.min(
+                                                    100,
+                                                    rebootProgress.progress,
+                                                ),
+                                            )}
+                                            %
+                                        </span>
+                                    </div>
 
-      <div className="h-4 overflow-hidden rounded-full bg-white/10">
-        <div
-          className="
+                                    <div className="h-4 overflow-hidden rounded-full bg-white/10">
+                                        <div
+                                            className="
             h-full rounded-full bg-red-500
             transition-[width] duration-500 ease-out
           "
-          style={{
-            width: `${Math.max(
-              0,
-              Math.min(
-                100,
-                rebootProgress.progress,
-              ),
-            )}%`,
-          }}
-        />
-      </div>
-    </div>
+                                            style={{
+                                                width: `${Math.max(
+                                                    0,
+                                                    Math.min(
+                                                        100,
+                                                        rebootProgress.progress,
+                                                    ),
+                                                )}%`,
+                                            }}
+                                        />
+                                    </div>
+                                </div>
 
-    {rebootProgress.status === "rebooting" ? (
-  <p className="mt-5 text-center text-sm font-medium text-amber-300">
-    Le système va redémarrer dans un instant.
-    Veuillez patienter.
-  </p>
-) : (
-  <p className="mt-5 text-center text-sm text-slate-500">
-    N’éteignez pas le Raspberry Pi et ne fermez
-    pas cette fenêtre.
-  </p>
-)}
+                                {rebootProgress.status === "rebooting" ? (
+                                    <p className="mt-5 text-center text-sm font-medium text-amber-300">
+                                        Le système va redémarrer dans un
+                                        instant. Veuillez patienter.
+                                    </p>
+                                ) : (
+                                    <p className="mt-5 text-center text-sm text-slate-500">
+                                        N’éteignez pas le Raspberry Pi et ne
+                                        fermez pas cette fenêtre.
+                                    </p>
+                                )}
 
-    {rebootError && (
-      <div className="mt-5 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-300">
-        {rebootError}
-      </div>
-    )}
-  </div>
-) : (
-        <>
-          <p className="mt-6 text-slate-300">
-            Les commandes suivantes seront exécutées :
-          </p>
+                                {rebootError && (
+                                    <div className="mt-5 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-300">
+                                        {rebootError}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <>
+                                <p className="mt-6 text-slate-300">
+                                    Les commandes suivantes seront exécutées :
+                                </p>
 
-          <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-4 font-mono text-sm text-slate-300">
-            <div>git fetch origin</div>
-<div>git reset --hard origin/[branche]</div>
-<div>npm ci</div>
-<div>npm run build</div>
-<div>sudo reboot</div>
-          </div>
+                                <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-4 font-mono text-sm text-slate-300">
+                                    <div>git fetch origin</div>
+                                    <div>git reset --hard origin/[branche]</div>
+                                    <div>npm ci</div>
+                                    <div>npm run build</div>
+                                    <div>sudo reboot</div>
+                                </div>
 
-          <p className="mt-4 text-sm text-amber-300">
-            L’application sera indisponible pendant
-            la mise à jour et le redémarrage.
-          </p>
+                                <p className="mt-4 text-sm text-amber-300">
+                                    L’application sera indisponible pendant la
+                                    mise à jour et le redémarrage.
+                                </p>
 
-          <div className="mt-7 flex gap-4">
-            <button
-              type="button"
-              onPointerUp={(event) => {
-                event.stopPropagation();
-                setShowRebootConfirmation(false);
-              }}
-              onClick={(event) => {
-                if (event.detail === 0) {
-                  setShowRebootConfirmation(false);
-                }
-              }}
-              className="
+                                <div className="mt-7 flex gap-4">
+                                    <button
+                                        type="button"
+                                        onPointerUp={(event) => {
+                                            event.stopPropagation();
+                                            setShowRebootConfirmation(false);
+                                        }}
+                                        onClick={(event) => {
+                                            if (event.detail === 0) {
+                                                setShowRebootConfirmation(
+                                                    false,
+                                                );
+                                            }
+                                        }}
+                                        className="
                 flex-1 rounded-xl border
                 border-white/10 bg-white/5
                 px-5 py-4 font-bold
                 active:bg-white/10
               "
-              style={{
-                touchAction: "none",
-              }}
-            >
-              Annuler
-            </button>
+                                        style={{
+                                            touchAction: "none",
+                                        }}
+                                    >
+                                        Annuler
+                                    </button>
 
-            <button
-              type="button"
-              onPointerUp={(event) => {
-                event.stopPropagation();
-                void updateAndReboot();
-              }}
-              onClick={(event) => {
-                if (event.detail === 0) {
-                  void updateAndReboot();
-                }
-              }}
-              className="
+                                    <button
+                                        type="button"
+                                        onPointerUp={(event) => {
+                                            event.stopPropagation();
+                                            void updateAndReboot();
+                                        }}
+                                        onClick={(event) => {
+                                            if (event.detail === 0) {
+                                                void updateAndReboot();
+                                            }
+                                        }}
+                                        className="
                 flex-1 rounded-xl bg-red-600
                 px-5 py-4 font-bold
                 active:bg-red-700
               "
-              style={{
-                touchAction: "none",
-              }}
-            >
-              Confirmer
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  </div>
-)}
-    </div>
-  );
+                                        style={{
+                                            touchAction: "none",
+                                        }}
+                                    >
+                                        Confirmer
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 }
 
 function Section({
-  title,
-  children,
+    title,
+    children,
 }: {
-  title: string;
-  children: React.ReactNode;
+    title: string;
+    children: React.ReactNode;
 }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-      <h3 className="mb-4 text-xl font-bold">
-        {title}
-      </h3>
+    return (
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <h3 className="mb-4 text-xl font-bold">{title}</h3>
 
-      <div className="space-y-4">
-        {children}
-      </div>
-    </div>
-  );
+            <div className="space-y-4">{children}</div>
+        </div>
+    );
 }
 
 function Field({
-  label,
-  children,
+    label,
+    children,
 }: {
-  label: string;
-  children: React.ReactNode;
+    label: string;
+    children: React.ReactNode;
 }) {
-  return (
-    <label className="block">
-      <p className="mb-2 text-sm text-slate-400">
-        {label}
-      </p>
+    return (
+        <label className="block">
+            <p className="mb-2 text-sm text-slate-400">{label}</p>
 
-      {children}
-    </label>
-  );
+            {children}
+        </label>
+    );
 }

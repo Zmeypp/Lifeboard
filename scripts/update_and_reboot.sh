@@ -17,26 +17,26 @@ mkdir -p "$LOG_DIR"
 exec >> "$LOG_FILE" 2>&1
 
 write_status() {
-  local status="$1"
-  local progress="$2"
-  local message="$3"
-  local error="${4:-}"
+    local status="$1"
+    local progress="$2"
+    local message="$3"
+    local error="${4:-}"
 
-  STATUS="$status" \
-  PROGRESS="$progress" \
-  MESSAGE="$message" \
-  ERROR_MESSAGE="$error" \
-  STATUS_FILE="$STATUS_FILE" \
-  python3 - <<'PY'
-import json
-import os
-from datetime import datetime, timezone
-from pathlib import Path
+    STATUS="$status" \
+    PROGRESS="$progress" \
+    MESSAGE="$message" \
+    ERROR_MESSAGE="$error" \
+    STATUS_FILE="$STATUS_FILE" \
+    python3 - <<'PY'
+    import json
+    import os
+    from datetime import datetime, timezone
+    from pathlib import Path
 
-status_file = Path(os.environ["STATUS_FILE"])
-temporary_file = status_file.with_suffix(".tmp")
+    status_file = Path(os.environ["STATUS_FILE"])
+    temporary_file = status_file.with_suffix(".tmp")
 
-data = {
+    data = {
     "status": os.environ["STATUS"],
     "progress": int(os.environ["PROGRESS"]),
     "message": os.environ["MESSAGE"],
@@ -45,8 +45,8 @@ data = {
 }
 
 temporary_file.write_text(
-    json.dumps(data, ensure_ascii=False, indent=2),
-    encoding="utf-8",
+json.dumps(data, ensure_ascii=False, indent=2),
+encoding="utf-8",
 )
 
 temporary_file.replace(status_file)
@@ -54,63 +54,63 @@ PY
 }
 
 fail() {
-  echo ""
-  echo "ERREUR : $1"
-  echo "La mise à jour est interrompue."
+    echo ""
+    echo "ERREUR : $1"
+    echo "La mise à jour est interrompue."
 
-  write_status \
+    write_status \
     "error" \
     "${CURRENT_PROGRESS:-0}" \
     "La mise à jour a échoué." \
     "$1"
 
-  exit 1
+    exit 1
 }
 
 run_with_progress() {
-  local start_progress="$1"
-  local end_progress="$2"
-  local message="$3"
-  local error_message="$4"
+    local start_progress="$1"
+    local end_progress="$2"
+    local message="$3"
+    local error_message="$4"
 
-  shift 4
+    shift 4
 
-  CURRENT_PROGRESS="$start_progress"
+    CURRENT_PROGRESS="$start_progress"
 
-  write_status \
+    write_status \
     "running" \
     "$CURRENT_PROGRESS" \
     "$message"
 
-  # La commande est lancée en arrière-plan afin que
-  # le pourcentage puisse avancer pendant son exécution.
-  "$@" &
+    # La commande est lancée en arrière-plan afin que
+    # le pourcentage puisse avancer pendant son exécution.
+    "$@" &
 
-  local command_pid=$!
-  local progress="$start_progress"
+    local command_pid=$!
+    local progress="$start_progress"
 
-  while kill -0 "$command_pid" 2>/dev/null; do
-    if [ "$progress" -lt $((end_progress - 1)) ]; then
-      progress=$((progress + 1))
-      CURRENT_PROGRESS="$progress"
+    while kill -0 "$command_pid" 2>/dev/null; do
+        if [ "$progress" -lt $((end_progress - 1)) ]; then
+            progress=$((progress + 1))
+            CURRENT_PROGRESS="$progress"
 
-      write_status \
-        "running" \
-        "$CURRENT_PROGRESS" \
-        "$message"
+            write_status \
+            "running" \
+            "$CURRENT_PROGRESS" \
+            "$message"
+        fi
+
+        sleep 1
+    done
+
+    # Récupération du véritable code de sortie.
+    if ! wait "$command_pid"; then
+        fail "$error_message"
     fi
 
-    sleep 1
-  done
+    CURRENT_PROGRESS="$end_progress"
 
-  # Récupération du véritable code de sortie.
-  if ! wait "$command_pid"; then
-    fail "$error_message"
-  fi
-
-  CURRENT_PROGRESS="$end_progress"
-
-  write_status \
+    write_status \
     "running" \
     "$CURRENT_PROGRESS" \
     "$message"
@@ -119,9 +119,9 @@ run_with_progress() {
 CURRENT_PROGRESS=2
 
 write_status \
-  "running" \
-  "$CURRENT_PROGRESS" \
-  "Préparation de la mise à jour…"
+"running" \
+"$CURRENT_PROGRESS" \
+"Préparation de la mise à jour…"
 
 echo "========================================"
 echo "Mise à jour LifeBoard"
@@ -131,121 +131,121 @@ echo "Dossier de build : $BUILD_DIR"
 echo "========================================"
 
 if [ -z "$LIFEBOARD_DIR" ]; then
-  fail "Le dossier LifeBoard n'a pas été fourni."
+    fail "Le dossier LifeBoard n'a pas été fourni."
 fi
 
 cd "$LIFEBOARD_DIR" ||
-  fail "Impossible d'accéder au dossier : $LIFEBOARD_DIR"
+fail "Impossible d'accéder au dossier : $LIFEBOARD_DIR"
 
 if [ ! -d ".git" ]; then
-  fail "Le dossier indiqué n'est pas un dépôt Git."
+    fail "Le dossier indiqué n'est pas un dépôt Git."
 fi
 
 CURRENT_PROGRESS=7
 
 write_status \
-  "running" \
-  "$CURRENT_PROGRESS" \
-  "Détermination de la branche Git…"
+"running" \
+"$CURRENT_PROGRESS" \
+"Détermination de la branche Git…"
 
 BRANCH="$(git symbolic-ref --quiet --short HEAD)" ||
-  fail "Impossible de déterminer la branche Git actuelle."
+fail "Impossible de déterminer la branche Git actuelle."
 
 echo "Branche : $BRANCH"
 
 CURRENT_PROGRESS=12
 
 write_status \
-  "running" \
-  "$CURRENT_PROGRESS" \
-  "Récupération des mises à jour Git…"
+"running" \
+"$CURRENT_PROGRESS" \
+"Récupération des mises à jour Git…"
 
 git fetch --prune origin ||
-  fail "Échec de git fetch."
+fail "Échec de git fetch."
 
 if ! git show-ref \
-  --verify \
-  --quiet \
-  "refs/remotes/origin/$BRANCH"
+    --verify \
+    --quiet \
+    "refs/remotes/origin/$BRANCH"
 then
-  fail "La branche distante origin/$BRANCH est introuvable."
+    fail "La branche distante origin/$BRANCH est introuvable."
 fi
 
 CURRENT_PROGRESS=18
 
 write_status \
-  "running" \
-  "$CURRENT_PROGRESS" \
-  "Préparation du dossier de compilation…"
+"running" \
+"$CURRENT_PROGRESS" \
+"Préparation du dossier de compilation…"
 
 REMOTE_URL="$(git remote get-url origin)" ||
-  fail "Impossible de récupérer l'URL du dépôt distant."
+fail "Impossible de récupérer l'URL du dépôt distant."
 
 echo "Dépôt distant : $REMOTE_URL"
 
 rm -rf "$BUILD_DIR" ||
-  fail "Impossible de supprimer l'ancien dossier de compilation."
+fail "Impossible de supprimer l'ancien dossier de compilation."
 
 git clone \
-  --branch "$BRANCH" \
-  --single-branch \
-  "$REMOTE_URL" \
-  "$BUILD_DIR" ||
-  fail "Impossible de cloner la dernière version distante."
+--branch "$BRANCH" \
+--single-branch \
+"$REMOTE_URL" \
+"$BUILD_DIR" ||
+fail "Impossible de cloner la dernière version distante."
 
 cd "$BUILD_DIR" ||
-  fail "Impossible d'accéder au dossier temporaire."
+fail "Impossible d'accéder au dossier temporaire."
 
 git fetch --prune origin ||
-  fail "Échec de git fetch dans le dossier temporaire."
+fail "Échec de git fetch dans le dossier temporaire."
 
 git reset --hard "origin/$BRANCH" ||
-  fail "Impossible d'aligner le dossier temporaire."
+fail "Impossible d'aligner le dossier temporaire."
 
 if [ -f "package-lock.json" ]; then
-  run_with_progress \
+    run_with_progress \
     28 \
     58 \
     "Installation des dépendances…" \
     "Échec de npm ci." \
     env \
-      -u NODE_ENV \
-      -u NPM_CONFIG_PRODUCTION \
-      -u NPM_CONFIG_OMIT \
-      npm ci --include=dev --no-audit --no-fund
+    -u NODE_ENV \
+    -u NPM_CONFIG_PRODUCTION \
+    -u NPM_CONFIG_OMIT \
+    npm ci --include=dev --no-audit --no-fund
 else
-  run_with_progress \
+    run_with_progress \
     28 \
     58 \
     "Installation des dépendances…" \
     "Échec de npm install." \
     env \
-      -u NODE_ENV \
-      -u NPM_CONFIG_PRODUCTION \
-      -u NPM_CONFIG_OMIT \
-      npm install --include=dev --no-audit --no-fund
+    -u NODE_ENV \
+    -u NPM_CONFIG_PRODUCTION \
+    -u NPM_CONFIG_OMIT \
+    npm install --include=dev --no-audit --no-fund
 fi
 
 run_with_progress \
-  60 \
-  87 \
-  "Compilation de LifeBoard…" \
-  "Échec de npm run build." \
-  env NODE_ENV=production npm run build
+60 \
+87 \
+"Compilation de LifeBoard…" \
+"Échec de npm run build." \
+env NODE_ENV=production npm run build
 
 CURRENT_PROGRESS=88
 
 write_status \
-  "running" \
-  "$CURRENT_PROGRESS" \
-  "Préparation de la nouvelle version…"
+"running" \
+"$CURRENT_PROGRESS" \
+"Préparation de la nouvelle version…"
 
 if [ ! -d "$BUILD_DIR/.next" ]; then
-  fail "Le dossier de compilation .next est introuvable."
+    fail "Le dossier de compilation .next est introuvable."
 fi
 
 if [ ! -d "$BUILD_DIR/node_modules" ]; then
-  fail "Le dossier node_modules compilé est introuvable."
+    fail "Le dossier node_modules compilé est introuvable."
 fi
 
 
@@ -254,53 +254,53 @@ fi
 # --------------------------------------------------
 
 if [ -f "$START_SCRIPT_SOURCE" ]; then
-  if (
-    [ ! -f "$START_SCRIPT_TARGET" ] ||
-    ! cmp --silent \
-      "$START_SCRIPT_SOURCE" \
-      "$START_SCRIPT_TARGET"
-  ); then
-    echo "Une nouvelle version de start-lifeboard.sh a été détectée."
+    if (
+        [ ! -f "$START_SCRIPT_TARGET" ] ||
+        ! cmp --silent \
+        "$START_SCRIPT_SOURCE" \
+        "$START_SCRIPT_TARGET"
+        ); then
+        echo "Une nouvelle version de start-lifeboard.sh a été détectée."
 
-    START_SCRIPT_TEMP="$HOME/.start-lifeboard.sh.tmp"
+        START_SCRIPT_TEMP="$HOME/.start-lifeboard.sh.tmp"
 
-    cp "$START_SCRIPT_SOURCE" "$START_SCRIPT_TEMP" ||
-      fail "Impossible de préparer le nouveau script de démarrage."
+        cp "$START_SCRIPT_SOURCE" "$START_SCRIPT_TEMP" ||
+        fail "Impossible de préparer le nouveau script de démarrage."
 
-    chmod 755 "$START_SCRIPT_TEMP" ||
-      fail "Impossible de rendre le nouveau script de démarrage exécutable."
+        chmod 755 "$START_SCRIPT_TEMP" ||
+        fail "Impossible de rendre le nouveau script de démarrage exécutable."
 
-    mv "$START_SCRIPT_TEMP" "$START_SCRIPT_TARGET" ||
-      fail "Impossible d'installer le nouveau script de démarrage."
+        mv "$START_SCRIPT_TEMP" "$START_SCRIPT_TARGET" ||
+        fail "Impossible d'installer le nouveau script de démarrage."
 
-    echo "Le script $START_SCRIPT_TARGET a été mis à jour."
-  else
-    echo "Le script de démarrage est déjà à jour."
-  fi
+        echo "Le script $START_SCRIPT_TARGET a été mis à jour."
+    else
+        echo "Le script de démarrage est déjà à jour."
+    fi
 else
-  fail "Le fichier $START_SCRIPT_SOURCE est introuvable dans la nouvelle version."
+    fail "Le fichier $START_SCRIPT_SOURCE est introuvable dans la nouvelle version."
 fi
 
 CURRENT_PROGRESS=96
 
 write_status \
-  "running" \
-  "$CURRENT_PROGRESS" \
-  "Finalisation de la mise à jour…"
+"running" \
+"$CURRENT_PROGRESS" \
+"Finalisation de la mise à jour…"
 
 sync
 
 CURRENT_PROGRESS=100
 
 write_status \
-  "rebooting" \
-  "$CURRENT_PROGRESS" \
-  "Le système va redémarrer dans un instant. Veuillez patienter."
+"rebooting" \
+"$CURRENT_PROGRESS" \
+"Le système va redémarrer dans un instant. Veuillez patienter."
 
 # Indique au script de démarrage qu'une mise à jour
 # doit être publiée avant de lancer LifeBoard.
 touch "$BUILD_DIR/.lifeboard-update-ready" ||
-  fail "Impossible de marquer la mise à jour comme prête."
+fail "Impossible de marquer la mise à jour comme prête."
 
 sync
 
@@ -308,4 +308,4 @@ sync
 sleep 5
 
 sudo /usr/sbin/reboot ||
-  fail "Impossible de redémarrer le Raspberry Pi."
+fail "Impossible de redémarrer le Raspberry Pi."
