@@ -9,6 +9,9 @@ LOG_FILE="$LOG_DIR/update-$(date +%Y-%m-%d_%H-%M-%S).log"
 STATUS_FILE="$HOME/lifeboard-update-status.json"
 BUILD_DIR="$HOME/lifeboard-update-build"
 
+START_SCRIPT_SOURCE="$BUILD_DIR/start-lifeboard.sh"
+START_SCRIPT_TARGET="$HOME/start-lifeboard.sh"
+
 mkdir -p "$LOG_DIR"
 
 exec >> "$LOG_FILE" 2>&1
@@ -196,6 +199,39 @@ fi
 
 if [ ! -d "$BUILD_DIR/node_modules" ]; then
   fail "Le dossier node_modules compilé est introuvable."
+fi
+
+
+# --------------------------------------------------
+# Mise à jour du script de démarrage
+# --------------------------------------------------
+
+if [ -f "$START_SCRIPT_SOURCE" ]; then
+  if (
+    [ ! -f "$START_SCRIPT_TARGET" ] ||
+    ! cmp --silent \
+      "$START_SCRIPT_SOURCE" \
+      "$START_SCRIPT_TARGET"
+  ); then
+    echo "Une nouvelle version de start-lifeboard.sh a été détectée."
+
+    START_SCRIPT_TEMP="$HOME/.start-lifeboard.sh.tmp"
+
+    cp "$START_SCRIPT_SOURCE" "$START_SCRIPT_TEMP" ||
+      fail "Impossible de préparer le nouveau script de démarrage."
+
+    chmod 755 "$START_SCRIPT_TEMP" ||
+      fail "Impossible de rendre le nouveau script de démarrage exécutable."
+
+    mv "$START_SCRIPT_TEMP" "$START_SCRIPT_TARGET" ||
+      fail "Impossible d'installer le nouveau script de démarrage."
+
+    echo "Le script $START_SCRIPT_TARGET a été mis à jour."
+  else
+    echo "Le script de démarrage est déjà à jour."
+  fi
+else
+  fail "Le fichier $START_SCRIPT_SOURCE est introuvable dans la nouvelle version."
 fi
 
 CURRENT_PROGRESS=96

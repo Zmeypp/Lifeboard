@@ -36,19 +36,71 @@ cleanup_splash() {
   fi
 }
 
+
+wait_for_graphical_environment() {
+  echo "Attente de l'environnement graphique..." \
+    >> "$LOG_DIR/startup.log"
+
+  for attempt in $(seq 1 100); do
+    if (
+      [ -n "${WAYLAND_DISPLAY:-}" ] &&
+      [ -n "${XDG_RUNTIME_DIR:-}" ] &&
+      [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]
+    ); then
+      echo "Wayland disponible après $attempt tentative(s)." \
+        >> "$LOG_DIR/startup.log"
+
+      return 0
+    fi
+
+    if (
+      [ -n "${DISPLAY:-}" ] &&
+      command -v xdpyinfo >/dev/null 2>&1 &&
+      xdpyinfo >/dev/null 2>&1
+    ); then
+      echo "Serveur X disponible après $attempt tentative(s)." \
+        >> "$LOG_DIR/startup.log"
+
+      return 0
+    fi
+
+    sleep 0.1
+  done
+
+  echo "AVERTISSEMENT : environnement graphique non confirmé." \
+    >> "$LOG_DIR/startup.log"
+
+  return 1
+}
+
 trap cleanup_splash EXIT
+
+wait_for_graphical_environment || true
+
+# Petit délai supplémentaire pour laisser le compositeur
+# terminer la configuration de l'écran.
+sleep 0.5
 
 if [ -f "$SPLASH_SCRIPT" ]; then
   echo "Démarrage du splashscreen..." \
     >> "$LOG_DIR/startup.log"
 
   python3 "$SPLASH_SCRIPT" \
-    >> "$SPLASH_LOG" 2>&1 &
+    > "$SPLASH_LOG" 2>&1 &
 
   SPLASH_PID=$!
 
-  echo "Splash PID : $SPLASH_PID" \
-    >> "$LOG_DIR/startup.log"
+  sleep 0.2
+
+  if kill -0 "$SPLASH_PID" 2>/dev/null; then
+    echo "Splash PID : $SPLASH_PID" \
+      >> "$LOG_DIR/startup.log"
+  else
+    echo "ERREUR : le splashscreen s'est arrêté immédiatement." \
+      >> "$LOG_DIR/startup.log"
+
+    SPLASH_PID=""
+  fi
 else
   echo "Splashscreen introuvable : $SPLASH_SCRIPT" \
     >> "$LOG_DIR/startup.log"
@@ -80,9 +132,6 @@ temporary_file.write_text(
 temporary_file.replace(status_file)
 PY
 }
-
-# Laisse le temps à l'environnement graphique de terminer son démarrage
-sleep 1
 
 # --------------------------------------------------
 # 1. Arrêt des anciens processus Squeekboard
