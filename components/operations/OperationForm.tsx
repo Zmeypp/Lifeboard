@@ -596,7 +596,7 @@ const [transferDestinationId, setTransferDestinationId] =
                 pattern="[0-9]*[.,]?[0-9]*"
                 placeholder="42,50"
                 autoComplete="off"
-                className="w-full bg-transparent px-2 py-3 text-white outline-none"
+                className="w-full bg-transparent px-2 py-3 text-white outline-none select-text"
             />
 
             <button
@@ -631,7 +631,7 @@ const [transferDestinationId, setTransferDestinationId] =
             setDescription(event.target.value)
           }
           placeholder="Ex : Carrefour"
-          className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none"
+          className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none select-text"
         />
       </div>
 

@@ -52,6 +52,16 @@ export default function DashboardGrid({
 }: DashboardGridProps) {
   const budgetScrollRef = useRef<HTMLDivElement>(null);
 
+  const operationScrollRef = useRef<HTMLDivElement>(null);
+
+const operationDragState = useRef({
+  active: false,
+  pointerId: -1,
+  startY: 0,
+  startScrollTop: 0,
+  moved: false,
+});
+
   const budgetDragState = useRef({
     active: false,
     pointerId: -1,
@@ -205,6 +215,117 @@ export default function DashboardGrid({
     }
   };
 
+  const handleOperationPointerDown = (
+  event: ReactPointerEvent<HTMLDivElement>,
+) => {
+  const target = event.target as HTMLElement;
+
+  /*
+   * Les champs et boutons gardent leur comportement normal.
+   * On peut néanmoins commencer le scroll depuis les labels
+   * et les zones de texte non interactives.
+   */
+  if (
+    target.closest(
+      [
+        "button",
+        "a",
+        "input",
+        "textarea",
+        "select",
+        "[role='button']",
+        "[data-no-drag]",
+      ].join(","),
+    )
+  ) {
+    return;
+  }
+
+  const container = operationScrollRef.current;
+
+  if (!container) {
+    return;
+  }
+
+  operationDragState.current = {
+    active: true,
+    pointerId: event.pointerId,
+    startY: event.clientY,
+    startScrollTop: container.scrollTop,
+    moved: false,
+  };
+
+  try {
+    container.setPointerCapture(event.pointerId);
+  } catch {
+    /*
+     * Le pointer capture peut ne pas être disponible
+     * sur certains navigateurs ou écrans tactiles.
+     */
+  }
+};
+
+const handleOperationPointerMove = (
+  event: ReactPointerEvent<HTMLDivElement>,
+) => {
+  const container = operationScrollRef.current;
+  const dragState = operationDragState.current;
+
+  if (
+    !container ||
+    !dragState.active ||
+    dragState.pointerId !== event.pointerId
+  ) {
+    return;
+  }
+
+  const distance =
+    event.clientY - dragState.startY;
+
+  /*
+   * Évite de transformer un simple appui
+   * en déplacement.
+   */
+  if (Math.abs(distance) > 4) {
+    dragState.moved = true;
+  }
+
+  if (!dragState.moved) {
+    return;
+  }
+
+  container.scrollTop =
+    dragState.startScrollTop - distance;
+
+  /*
+   * Empêche la sélection des textes et le déplacement
+   * de la page complète.
+   */
+  event.preventDefault();
+};
+
+const handleOperationPointerEnd = (
+  event: ReactPointerEvent<HTMLDivElement>,
+) => {
+  const container = operationScrollRef.current;
+
+  operationDragState.current.active = false;
+  operationDragState.current.pointerId = -1;
+
+  if (
+    container &&
+    container.hasPointerCapture(event.pointerId)
+  ) {
+    try {
+      container.releasePointerCapture(
+        event.pointerId,
+      );
+    } catch {
+      // Le pointeur peut déjà avoir été libéré.
+    }
+  }
+};
+
   return (
     <div className="grid min-h-0 flex-1 grid-cols-12 grid-rows-10 gap-4">
       <Card
@@ -253,13 +374,23 @@ export default function DashboardGrid({
   "
 >
   <div
+    ref={operationScrollRef}
+    onPointerDown={handleOperationPointerDown}
+    onPointerMove={handleOperationPointerMove}
+    onPointerUp={handleOperationPointerEnd}
+    onPointerCancel={handleOperationPointerEnd}
+    onLostPointerCapture={handleOperationPointerEnd}
     className="
       h-full min-h-0
       overflow-y-auto overscroll-contain
-      pr-2
+      pr-2 select-none
     "
     style={{
       WebkitOverflowScrolling: "touch",
+      touchAction: "none",
+      WebkitUserSelect: "none",
+      userSelect: "none",
+      cursor: "grab",
     }}
   >
     <OperationForm
