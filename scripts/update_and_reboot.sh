@@ -67,6 +67,55 @@ fail() {
   exit 1
 }
 
+run_with_progress() {
+  local start_progress="$1"
+  local end_progress="$2"
+  local message="$3"
+  local error_message="$4"
+
+  shift 4
+
+  CURRENT_PROGRESS="$start_progress"
+
+  write_status \
+    "running" \
+    "$CURRENT_PROGRESS" \
+    "$message"
+
+  # La commande est lancée en arrière-plan afin que
+  # le pourcentage puisse avancer pendant son exécution.
+  "$@" &
+
+  local command_pid=$!
+  local progress="$start_progress"
+
+  while kill -0 "$command_pid" 2>/dev/null; do
+    if [ "$progress" -lt $((end_progress - 1)) ]; then
+      progress=$((progress + 1))
+      CURRENT_PROGRESS="$progress"
+
+      write_status \
+        "running" \
+        "$CURRENT_PROGRESS" \
+        "$message"
+    fi
+
+    sleep 1
+  done
+
+  # Récupération du véritable code de sortie.
+  if ! wait "$command_pid"; then
+    fail "$error_message"
+  fi
+
+  CURRENT_PROGRESS="$end_progress"
+
+  write_status \
+    "running" \
+    "$CURRENT_PROGRESS" \
+    "$message"
+}
+
 CURRENT_PROGRESS=2
 
 write_status \
@@ -153,38 +202,36 @@ git fetch --prune origin ||
 git reset --hard "origin/$BRANCH" ||
   fail "Impossible d'aligner le dossier temporaire."
 
-CURRENT_PROGRESS=28
-
-write_status \
-  "running" \
-  "$CURRENT_PROGRESS" \
-  "Installation des dépendances…"
-
 if [ -f "package-lock.json" ]; then
-  env \
-    -u NODE_ENV \
-    -u NPM_CONFIG_PRODUCTION \
-    -u NPM_CONFIG_OMIT \
-    npm ci --include=dev --no-audit --no-fund ||
-    fail "Échec de npm ci."
+  run_with_progress \
+    28 \
+    58 \
+    "Installation des dépendances…" \
+    "Échec de npm ci." \
+    env \
+      -u NODE_ENV \
+      -u NPM_CONFIG_PRODUCTION \
+      -u NPM_CONFIG_OMIT \
+      npm ci --include=dev --no-audit --no-fund
 else
-  env \
-    -u NODE_ENV \
-    -u NPM_CONFIG_PRODUCTION \
-    -u NPM_CONFIG_OMIT \
-    npm install --include=dev --no-audit --no-fund ||
-    fail "Échec de npm install."
+  run_with_progress \
+    28 \
+    58 \
+    "Installation des dépendances…" \
+    "Échec de npm install." \
+    env \
+      -u NODE_ENV \
+      -u NPM_CONFIG_PRODUCTION \
+      -u NPM_CONFIG_OMIT \
+      npm install --include=dev --no-audit --no-fund
 fi
 
-CURRENT_PROGRESS=60
-
-write_status \
-  "running" \
-  "$CURRENT_PROGRESS" \
-  "Compilation de LifeBoard…"
-
-NODE_ENV=production npm run build ||
-  fail "Échec de npm run build."
+run_with_progress \
+  60 \
+  87 \
+  "Compilation de LifeBoard…" \
+  "Échec de npm run build." \
+  env NODE_ENV=production npm run build
 
 CURRENT_PROGRESS=88
 
