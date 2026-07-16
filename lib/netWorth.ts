@@ -126,8 +126,11 @@ export function buildNetWorthChartData({
    * réellement antérieurs à la période journalière.
    */
   const monthlyPoints: NetWorthChartPoint[] =
-    snapshots
-      .map((snapshot) => {
+  snapshots
+    .map(
+      (
+        snapshot,
+      ): NetWorthChartPoint | null => {
         const snapshotDate = parseMonthKey(
           snapshot.month,
         );
@@ -139,26 +142,28 @@ export function buildNetWorthChartData({
         return {
           key: `month-${snapshot.month}`,
           label: snapshot.label,
-          tooltipLabel: snapshotDate.toLocaleDateString(
-            "fr-FR",
-            {
-              month: "long",
-              year: "numeric",
-            },
-          ),
+          tooltipLabel:
+            snapshotDate.toLocaleDateString(
+              "fr-FR",
+              {
+                month: "long",
+                year: "numeric",
+              },
+            ),
           value: snapshot.value,
           timestamp: snapshotDate.getTime(),
-          granularity: "month" as const,
+          granularity: "month",
         };
-      })
-      .filter(
-        (
-          point,
-        ): point is NetWorthChartPoint =>
-          point !== null &&
-          point.timestamp <
-            dailyStartDate.getTime(),
-      );
+      },
+    )
+    .filter(
+      (
+        point,
+      ): point is NetWorthChartPoint =>
+        point !== null &&
+        point.timestamp <
+          dailyStartDate.getTime(),
+    );
 
   /*
    * On reconstruit ensuite chaque journée
