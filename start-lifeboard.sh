@@ -108,20 +108,20 @@ fi
 
 reset_update_status() {
     STATUS_FILE="$STATUS_FILE" python3 - <<'PY'
-    import json
-    import os
-    from datetime import datetime, timezone
-    from pathlib import Path
+import json
+import os
+from datetime import datetime, timezone
+from pathlib import Path
 
-    status_file = Path(os.environ["STATUS_FILE"])
-    temporary_file = status_file.with_suffix(".tmp")
+status_file = Path(os.environ["STATUS_FILE"])
+temporary_file = status_file.with_suffix(".tmp")
 
-    data = {
-    "status": "idle",
-    "progress": 0,
-    "message": "LifeBoard a redémarré avec succès.",
-    "error": None,
-    "updatedAt": datetime.now(timezone.utc).isoformat(),
+data = {
+"status": "idle",
+"progress": 0,
+"message": "LifeBoard a redémarré avec succès.",
+"error": None,
+"updatedAt": datetime.now(timezone.utc).isoformat(),
 }
 
 temporary_file.write_text(
@@ -328,10 +328,16 @@ if [ "$LIFEBOARD_READY" != "true" ]; then
     exit 1
 fi
 
-reset_update_status
+if reset_update_status; then
+    echo "Statut de mise à jour réinitialisé." \
+    >> "$LOG_DIR/startup.log"
+else
+    echo "ERREUR : impossible de réinitialiser le statut de mise à jour." \
+    >> "$LOG_DIR/startup.log"
 
-echo "Statut de mise à jour réinitialisé." \
->> "$LOG_DIR/startup.log"
+    cleanup_splash
+    exit 1
+fi
 
 # --------------------------------------------------
 # 7. Démarrage de Firefox en mode kiosque
