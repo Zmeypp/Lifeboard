@@ -1,6 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import {
+    useRef,
+    useState,
+    type PointerEvent as ReactPointerEvent,
+} from "react";
 import type { Operation } from "@/data/operations";
 import AnimatedButton from "@/components/ui/AnimatedButton";
 
@@ -23,6 +27,86 @@ export default function OperationsPage({
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editTitle, setEditTitle] = useState("");
     const [editAmount, setEditAmount] = useState("");
+
+
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    const dragState = useRef({
+        active: false,
+        startY: 0,
+        startScrollTop: 0,
+        moved: false,
+    });
+
+    function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+        const target = event.target as HTMLElement;
+
+        /*
+        * On ne déclenche pas le déplacement de la liste
+        * depuis un bouton, un champ ou un autre élément interactif.
+        */
+        if (
+            target.closest(
+                "button, a, input, textarea, select, label, [role='button']",
+            )
+        ) {
+            return;
+        }
+
+        const container = scrollRef.current;
+
+        if (!container) {
+            return;
+        }
+
+        dragState.current = {
+            active: true,
+            startY: event.clientY,
+            startScrollTop: container.scrollTop,
+            moved: false,
+        };
+
+        try {
+            container.setPointerCapture(event.pointerId);
+        } catch {
+            /*
+            * Le pointer capture peut ne pas être disponible
+            * sur certains écrans ou navigateurs.
+            */
+        }
+    }
+
+    function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+        const container = scrollRef.current;
+
+        if (!container || !dragState.current.active) {
+            return;
+        }
+
+        const distance = event.clientY - dragState.current.startY;
+
+        if (Math.abs(distance) > 4) {
+            dragState.current.moved = true;
+        }
+
+        container.scrollTop =
+            dragState.current.startScrollTop - distance;
+
+        /*
+        * Empêche la sélection du texte pendant le glissement.
+        */
+        event.preventDefault();
+    }
+
+    function handlePointerEnd(event: ReactPointerEvent<HTMLDivElement>) {
+        const container = scrollRef.current;
+
+        dragState.current.active = false;
+
+        if (container?.hasPointerCapture(event.pointerId)) {
+            container.releasePointerCapture(event.pointerId);
+        }
+    }
 
     const filteredOperations = operations.filter((operation) => {
         const matchesSearch =
@@ -100,8 +184,8 @@ export default function OperationsPage({
     }
 
     return (
-        <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-[#0b1623] p-6">
-            <div className="mb-6 flex items-center justify-between">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0b1623] p-6">
+            <div className="mb-6 flex shrink-0 items-center justify-between">
                 <div>
                     <h2 className="text-3xl font-bold">Opérations</h2>
 
@@ -112,7 +196,7 @@ export default function OperationsPage({
                 </div>
             </div>
 
-            <div className="mb-5 flex gap-4">
+            <div className="mb-5 flex shrink-0 gap-4">
                 <input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
@@ -145,7 +229,22 @@ export default function OperationsPage({
                 </select>
             </div>
 
-            <div className="h-full space-y-3 overflow-y-auto pr-2 pb-32">
+            <div
+                ref={scrollRef}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerEnd}
+                onPointerCancel={handlePointerEnd}
+                className="
+                    min-h-0 flex-1 space-y-3 overflow-y-auto
+                    overscroll-contain pr-2 pb-32 select-none
+                "
+                style={{
+                    WebkitOverflowScrolling: "touch",
+                    touchAction: "none",
+                    cursor: dragState.current.active ? "grabbing" : "grab",
+                }}
+            >
                 {filteredOperations.map((operation) => {
                     const isEditing = editingId === operation.id;
 
