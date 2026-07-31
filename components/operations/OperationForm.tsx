@@ -84,16 +84,23 @@ export default function OperationForm({
             setSelectedAccountId(accountBudgets[0]?.id ?? "");
         }
 
-        if (
-            !accountBudgets.some(
-                (budget) => budget.id === transferDestinationId,
-            )
-        ) {
-            setTransferDestinationId(
-                accountBudgets[1]?.id ?? accountBudgets[0]?.id ?? "",
-            );
+        const availableDestinations = accountBudgets.filter(
+            (budget) => budget.id !== selectedAccountId,
+        );
+
+        const isDestinationValid = availableDestinations.some(
+            (budget) => budget.id === transferDestinationId,
+        );
+
+        if (!isDestinationValid) {
+            setTransferDestinationId(availableDestinations[0]?.id ?? "");
         }
-    }, [budgets, selectedBudgetId, selectedAccountId, transferDestinationId]);
+    }, [
+        budgets,
+        selectedBudgetId,
+        selectedAccountId,
+        transferDestinationId,
+    ]);
 
     function selectType(nextType: OperationType) {
         setType(nextType);
@@ -459,9 +466,19 @@ export default function OperationForm({
 
                         <select
                             value={selectedAccountId}
-                            onChange={(event) =>
-                                setSelectedAccountId(event.target.value)
-                            }
+                            onChange={(event) => {
+                                const newSourceId = event.target.value;
+
+                                setSelectedAccountId(newSourceId);
+
+                                if (transferDestinationId === newSourceId) {
+                                    const newDestination = accountBudgets.find(
+                                        (budget) => budget.id !== newSourceId,
+                                    );
+
+                                    setTransferDestinationId(newDestination?.id ?? "");
+                                }
+                            }}
                             className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none"
                         >
                             {accountBudgets.map((budget) => (
