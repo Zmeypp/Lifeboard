@@ -132,9 +132,13 @@ export default function NetWorthChart({
                             tickLine={false}
                             axisLine={false}
                             width={55}
-                            tickFormatter={(value: number) =>
-                                `${Math.round(value / 1000)}k`
-                            }
+                            tickFormatter={(value: number) => {
+                                const thousands = value / 1000;
+
+                                return `${thousands.toLocaleString("fr-FR", {
+                                    maximumFractionDigits: 1,
+                                })}k`;
+                            }}
                         />
 
                         <Tooltip
