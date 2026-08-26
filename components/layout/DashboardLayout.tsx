@@ -332,6 +332,7 @@ export default function DashboardLayout() {
                                         operations={operations}
                                         budgets={budgets}
                                         netWorthSnapshots={netWorthSnapshots}
+                                        budgetResetDay={settings.budgetResetDay}
                                     />
                                 )}
 

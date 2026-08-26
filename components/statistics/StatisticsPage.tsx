@@ -19,11 +19,13 @@ import type { Operation } from "@/data/operations";
 import type { NetWorthSnapshot } from "@/data/netWorthSnapshots";
 import { calculateNetWorth } from "@/lib/netWorth";
 import { useMemo } from "react";
+import { isInCurrentBudgetCycle } from "@/lib/budgetCycle";
 
 type StatisticsPageProps = {
     operations: Operation[];
     budgets: Budget[];
     netWorthSnapshots: NetWorthSnapshot[];
+    budgetResetDay: number;
 };
 
 const chartColors = [
@@ -39,6 +41,7 @@ export default function StatisticsPage({
     operations,
     budgets,
     netWorthSnapshots,
+    budgetResetDay,
 }: StatisticsPageProps) {
     const expenses = useMemo(
         () => operations.filter((operation) => operation.type === "expense"),
@@ -108,7 +111,11 @@ export default function StatisticsPage({
         }));
     }, [incomes]);
 
-    const currentNetWorth = calculateNetWorth(budgets, operations);
+    const currentNetWorth = calculateNetWorth(
+        budgets,
+        operations,
+        budgetResetDay,
+    );
 
     const netWorthData = useMemo(
         () => [
@@ -122,14 +129,31 @@ export default function StatisticsPage({
         [netWorthSnapshots, currentNetWorth],
     );
 
-    const livretA = budgets.find((budget) => budget.name === "Livret A");
+    const livretA = budgets.find((budget) => budget.id === "livret-a");
+
     const baseLivretA = livretA?.amount ?? 0;
 
-    const livretAImpact = operations.reduce((total, operation) => {
-        return total + (operation.accountImpact["Livret A"] ?? 0);
-    }, 0);
+    const currentCycleOperations = useMemo(
+        () =>
+            operations.filter((operation) =>
+                isInCurrentBudgetCycle(
+                    operation.createdAt,
+                    budgetResetDay,
+                ),
+            ),
+        [operations, budgetResetDay],
+    );
 
-    const currentLivretA = baseLivretA + livretAImpact;
+    const livretAImpact = currentCycleOperations.reduce(
+        (total, operation) =>
+            total + (operation.accountImpact["livret-a"] ?? 0),
+        0,
+    );
+
+    const currentLivretA = Math.max(
+        baseLivretA + livretAImpact,
+        0,
+    );
 
     const livretAData = useMemo(
         () => [
