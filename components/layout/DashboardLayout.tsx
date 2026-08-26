@@ -340,6 +340,7 @@ export default function DashboardLayout() {
                                         settings={settings}
                                         onUpdateSettings={setSettings}
                                         budgets={budgets}
+                                        onUpdateBudgets={setBudgets}
                                         operations={operations}
                                         goals={goals}
                                         netWorthSnapshots={netWorthSnapshots}

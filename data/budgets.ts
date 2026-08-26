@@ -5,7 +5,14 @@ export type BudgetType = "account" | "spending";
 export type Budget = {
     id: string;
     name: string;
+
+    // Montant actuellement utilisé par le dashboard / BudgetList
     amount: number;
+
+    // Montant configuré dans BudgetPage.
+    // Il pourra être remis à une valeur prédéfinie depuis Settings.
+    resetAmount?: number;
+
     max: number;
     color: BudgetColor;
     icon: string;
@@ -18,7 +25,13 @@ export const initialBudgets: Budget[] = [
     {
         id: "compte-courant",
         name: "Compte courant",
+
+        // Valeur actuellement réellement utilisée
         amount: 826,
+
+        // Valeur affichée/configurée dans BudgetPage
+        resetAmount: 826,
+
         max: 1000,
         color: "blue",
         icon: "💳",
@@ -28,7 +41,13 @@ export const initialBudgets: Budget[] = [
     {
         id: "livret-a",
         name: "Livret A",
+
+        // Valeur actuellement réellement utilisée
         amount: 7700,
+
+        // Valeur affichée/configurée dans BudgetPage
+        resetAmount: 7700,
+
         max: 8000,
         color: "green",
         icon: "🐷",
@@ -39,6 +58,7 @@ export const initialBudgets: Budget[] = [
         id: "courses",
         name: "Courses",
         amount: 250,
+        resetAmount: 250,
         max: 250,
         color: "orange",
         icon: "🛒",
@@ -49,6 +69,7 @@ export const initialBudgets: Budget[] = [
         id: "essence",
         name: "Essence",
         amount: 200,
+        resetAmount: 200,
         max: 200,
         color: "yellow",
         icon: "⛽",
@@ -59,6 +80,7 @@ export const initialBudgets: Budget[] = [
         id: "loisirs",
         name: "Loisirs",
         amount: 300,
+        resetAmount: 300,
         max: 300,
         color: "blue",
         icon: "🎮",

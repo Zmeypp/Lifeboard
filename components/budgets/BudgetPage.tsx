@@ -49,9 +49,11 @@ export default function BudgetPage({
             const nextInputs: Record<string, string> = {};
 
             budgets.forEach((budget) => {
+                const displayedAmount = budget.resetAmount ?? budget.amount;
+
                 nextInputs[budget.id] =
                     currentInputs[budget.id] ??
-                    String(budget.amount).replace(".", ",");
+                    String(displayedAmount).replace(".", ",");
             });
 
             return nextInputs;
@@ -89,17 +91,27 @@ export default function BudgetPage({
         if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
             const currentBudget = budgets.find((budget) => budget.id === id);
 
+            const currentAmount = currentBudget
+                ? (currentBudget.resetAmount ?? currentBudget.amount)
+                : "";
+
             setBudgetAmountInputs((currentInputs) => ({
                 ...currentInputs,
-                [id]: currentBudget
-                    ? String(currentBudget.amount).replace(".", ",")
-                    : "",
+                [id]:
+                    currentAmount === ""
+                        ? ""
+                        : String(currentAmount).replace(".", ","),
             }));
 
             return;
         }
 
-        updateBudget(id, "amount", parsedAmount);
+        /*
+        * IMPORTANT :
+        * on modifie le montant de reset,
+        * pas le montant actif du dashboard.
+        */
+        updateBudget(id, "resetAmount", parsedAmount);
 
         setBudgetAmountInputs((currentInputs) => ({
             ...currentInputs,
@@ -142,7 +154,13 @@ export default function BudgetPage({
         const newBudget: Budget = {
             id: crypto.randomUUID(),
             name: name.trim(),
+
+            // Base active initiale
             amount: parsedAmount,
+
+            // Montant configuré pour les futurs resets
+            resetAmount: parsedAmount,
+
             max: parsedAmount,
             icon,
             color,
@@ -190,7 +208,7 @@ export default function BudgetPage({
 
             <div className="mb-2 grid grid-cols-7 gap-3 px-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
                 <div>Nom</div>
-                <div>Montant</div>
+                <div>Montant reset</div>
                 <div>Icône</div>
                 <div>Type</div>
                 <div>Débité sur</div>
@@ -434,7 +452,7 @@ export default function BudgetPage({
                             <input
                                 value={
                                     budgetAmountInputs[budget.id] ??
-                                    String(budget.amount).replace(".", ",")
+                                    String(budget.resetAmount ?? budget.amount).replace(".", ",")
                                 }
                                 onChange={(event) =>
                                     handleBudgetAmountChange(
@@ -462,7 +480,7 @@ export default function BudgetPage({
                                 onClick={() => {
                                     const currentValue =
                                         budgetAmountInputs[budget.id] ??
-                                        String(budget.amount).replace(".", ",");
+                                        String(budget.resetAmount ?? budget.amount).replace(".", ",");
 
                                     if (!currentValue.includes(",")) {
                                         setBudgetAmountInputs(

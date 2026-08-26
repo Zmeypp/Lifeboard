@@ -6,7 +6,14 @@ import {
     useState,
     type PointerEvent as ReactPointerEvent,
 } from "react";
-import { Power, TriangleAlert, X } from "lucide-react";
+import {
+    Power,
+    TriangleAlert,
+    X,
+    RotateCcw,
+    WalletCards,
+    ArrowLeft,
+} from "lucide-react";
 import type { AppSettings } from "@/data/settings";
 import type { Budget } from "@/data/budgets";
 import type { Operation } from "@/data/operations";
@@ -14,14 +21,19 @@ import type { Goal } from "@/data/goals";
 import type { NetWorthSnapshot } from "@/data/netWorthSnapshots";
 import AnimatedButton from "@/components/ui/AnimatedButton";
 import { motion } from "framer-motion";
+import { isInCurrentBudgetCycle } from "@/lib/budgetCycle";
 
 type SettingsPageProps = {
     settings: AppSettings;
     onUpdateSettings: (settings: AppSettings) => void;
+
     budgets: Budget[];
+    onUpdateBudgets: (budgets: Budget[]) => void;
+
     operations: Operation[];
     goals: Goal[];
     netWorthSnapshots: NetWorthSnapshot[];
+
     onImportData: (data: {
         settings?: AppSettings;
         budgets?: Budget[];
@@ -46,12 +58,14 @@ type RebootProgress = {
     error: string | null;
 };
 
+type EditableAccountId = "compte-courant" | "livret-a";
 const REBOOT_STORAGE_KEY = "lifeboard-reboot-in-progress";
 
 export default function SettingsPage({
     settings,
     onUpdateSettings,
     budgets,
+    onUpdateBudgets,
     operations,
     goals,
     netWorthSnapshots,
@@ -85,6 +99,19 @@ export default function SettingsPage({
         message: "Préparation…",
         error: null,
     });
+    const [
+        showBudgetResetConfirmation,
+        setShowBudgetResetConfirmation,
+    ] = useState(false);
+
+    const [showAccountEditor, setShowAccountEditor] = useState(false);
+
+    const [accountEditorStep, setAccountEditorStep] = useState<1 | 2>(1);
+
+    const [selectedAccountId, setSelectedAccountId] =
+        useState<EditableAccountId | null>(null);
+
+    const [accountAmountInput, setAccountAmountInput] = useState("");
 
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -324,6 +351,152 @@ export default function SettingsPage({
             window.clearInterval(intervalId);
         };
     }, [isRebooting]);
+
+    function resetBudgetAmounts() {
+        const nextBudgets = budgets.map((budget) => {
+            if (budget.id === "compte-courant") {
+                return {
+                    ...budget,
+                    resetAmount: 1000,
+                };
+            }
+
+            if (budget.id === "livret-a") {
+                return {
+                    ...budget,
+                    resetAmount: 5000,
+                };
+            }
+
+            return budget;
+        });
+
+        onUpdateBudgets(nextBudgets);
+        setShowBudgetResetConfirmation(false);
+    }
+
+    function roundCurrency(value: number) {
+        return Math.round((value + Number.EPSILON) * 100) / 100;
+    }
+
+    function sanitizeMoneyValue(value: string) {
+        return value
+            .replace(".", ",")
+            .replace(/[^\d,]/g, "")
+            .replace(/(,.*),/g, "$1");
+    }
+
+    function parseMoneyValue(value: string) {
+        return Number(value.replace(",", "."));
+    }
+
+    /*
+    * Retourne l'impact des opérations du cycle actuel
+    * sur le compte demandé.
+    *
+    * C'est exactement le même principe que dans BudgetList.
+    */
+    function getCurrentAccountImpact(accountId: EditableAccountId) {
+        return operations
+            .filter((operation) =>
+                isInCurrentBudgetCycle(
+                    operation.createdAt,
+                    settings.budgetResetDay,
+                ),
+            )
+            .reduce(
+                (total, operation) =>
+                    total + (operation.accountImpact[accountId] ?? 0),
+                0,
+            );
+    }
+
+    /*
+    * Retourne le montant actuellement visible dans BudgetList.
+    */
+    function getCurrentDisplayedAccountAmount(accountId: EditableAccountId) {
+        const budget = budgets.find((budget) => budget.id === accountId);
+
+        if (!budget) {
+            return 0;
+        }
+
+        const accountImpact = getCurrentAccountImpact(accountId);
+
+        return roundCurrency(
+            Math.max(budget.amount + accountImpact, 0),
+        );
+    }
+
+    function openAccountEditor() {
+        setSelectedAccountId(null);
+        setAccountAmountInput("");
+        setAccountEditorStep(1);
+        setShowAccountEditor(true);
+    }
+
+    function closeAccountEditor() {
+        setShowAccountEditor(false);
+        setAccountEditorStep(1);
+        setSelectedAccountId(null);
+        setAccountAmountInput("");
+    }
+
+    function goToAccountAmountStep() {
+        if (!selectedAccountId) {
+            return;
+        }
+
+        const currentAmount =
+            getCurrentDisplayedAccountAmount(selectedAccountId);
+
+        setAccountAmountInput(
+            String(currentAmount).replace(".", ","),
+        );
+
+        setAccountEditorStep(2);
+    }
+
+    function saveAccountDisplayedAmount() {
+        if (!selectedAccountId) {
+            return;
+        }
+
+        const parsedAmount = parseMoneyValue(accountAmountInput);
+
+        if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
+            return;
+        }
+
+        /*
+        * BudgetList calcule :
+        *
+        * budget.amount + accountImpact
+        *
+        * Donc pour obtenir exactement le montant demandé :
+        *
+        * budget.amount = montant demandé - accountImpact
+        */
+        const currentImpact =
+            getCurrentAccountImpact(selectedAccountId);
+
+        const newBaseAmount = roundCurrency(
+            parsedAmount - currentImpact,
+        );
+
+        onUpdateBudgets(
+            budgets.map((budget) =>
+                budget.id === selectedAccountId
+                    ? {
+                        ...budget,
+                        amount: newBaseAmount,
+                    }
+                    : budget,
+            ),
+        );
+
+        closeAccountEditor();
+    }
 
     function update<K extends keyof AppSettings>(
         key: K,
@@ -723,6 +896,69 @@ export default function SettingsPage({
                     </Field>
                 </Section>
 
+                <Section title="Budgets">
+                    <p className="text-sm leading-relaxed text-slate-400">
+                        Gère les montants de référence ou corrige manuellement
+                        le solde actuellement affiché d'un compte.
+                    </p>
+
+                    <div className="space-y-3">
+                        <button
+                            type="button"
+                            onPointerUp={(event) => {
+                                event.stopPropagation();
+                                openAccountEditor();
+                            }}
+                            onClick={(event) => {
+                                if (event.detail === 0) {
+                                    openAccountEditor();
+                                }
+                            }}
+                            className="
+                                flex w-full items-center justify-center gap-3
+                                rounded-xl border border-blue-400/30
+                                bg-blue-500/10 px-5 py-4
+                                font-bold text-blue-300
+                                active:bg-blue-500/20
+                            "
+                            style={{
+                                touchAction: "none",
+                            }}
+                        >
+                            <WalletCards size={22} />
+
+                            Modifier un compte
+                        </button>
+
+                        <button
+                            type="button"
+                            onPointerUp={(event) => {
+                                event.stopPropagation();
+                                setShowBudgetResetConfirmation(true);
+                            }}
+                            onClick={(event) => {
+                                if (event.detail === 0) {
+                                    setShowBudgetResetConfirmation(true);
+                                }
+                            }}
+                            className="
+                                flex w-full items-center justify-center gap-3
+                                rounded-xl border border-amber-400/30
+                                bg-amber-500/10 px-5 py-4
+                                font-bold text-amber-300
+                                active:bg-amber-500/20
+                            "
+                            style={{
+                                touchAction: "none",
+                            }}
+                        >
+                            <RotateCcw size={22} />
+
+                            Réinitialiser les budgets
+                        </button>
+                    </div>
+                </Section>
+
                 <Section title="Sécurité financière">
                     <Field label="Montant minimum à conserver sur le Livret A">
                         <input
@@ -1105,6 +1341,699 @@ export default function SettingsPage({
                                 </div>
                             </>
                         )}
+                    </div>
+                </div>
+            )}
+            {showAccountEditor && (
+                <div
+                    className="
+                        fixed inset-0 z-[85]
+                        flex items-center justify-center
+                        bg-black/75 p-6
+                        backdrop-blur-sm
+                    "
+                    style={{
+                        touchAction: "none",
+                    }}
+                >
+                    <div
+                        className="
+                            w-full max-w-lg
+                            rounded-2xl
+                            border border-blue-400/30
+                            bg-[#0b1623]
+                            p-8 shadow-2xl
+                        "
+                    >
+                        <div className="flex items-start justify-between gap-5">
+                            <div>
+                                <div
+                                    className="
+                                        mb-4 flex h-14 w-14
+                                        items-center justify-center
+                                        rounded-full
+                                        bg-blue-500/15
+                                        text-blue-300
+                                    "
+                                >
+                                    <WalletCards size={30} />
+                                </div>
+
+                                <h2 className="text-2xl font-bold">
+                                    Modifier un compte
+                                </h2>
+
+                                <p className="mt-2 text-sm text-slate-500">
+                                    Étape {accountEditorStep} sur 2
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                onPointerUp={(event) => {
+                                    event.stopPropagation();
+                                    closeAccountEditor();
+                                }}
+                                onClick={(event) => {
+                                    if (event.detail === 0) {
+                                        closeAccountEditor();
+                                    }
+                                }}
+                                className="rounded-lg p-2 active:bg-white/15"
+                                style={{
+                                    touchAction: "none",
+                                }}
+                                aria-label="Fermer"
+                            >
+                                <X />
+                            </button>
+                        </div>
+
+                        {/* ÉTAPE 1 : choix du compte */}
+                        {accountEditorStep === 1 && (
+                            <>
+                                <p className="mt-6 text-slate-300">
+                                    Quel compte souhaites-tu modifier ?
+                                </p>
+
+                                <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                                    Cette modification corrigera directement le
+                                    montant actuellement visible sur la page
+                                    principale.
+                                </p>
+
+                                <div className="mt-5 space-y-3">
+                                    <button
+                                        type="button"
+                                        onPointerUp={(event) => {
+                                            event.stopPropagation();
+                                            setSelectedAccountId(
+                                                "compte-courant",
+                                            );
+                                        }}
+                                        onClick={(event) => {
+                                            if (event.detail === 0) {
+                                                setSelectedAccountId(
+                                                    "compte-courant",
+                                                );
+                                            }
+                                        }}
+                                        className={`
+                                            flex w-full items-center
+                                            justify-between rounded-xl
+                                            border p-4 text-left
+                                            transition
+                                            ${
+                                                selectedAccountId ===
+                                                "compte-courant"
+                                                    ? "border-blue-400/60 bg-blue-500/15"
+                                                    : "border-white/10 bg-white/[0.04] active:bg-white/[0.08]"
+                                            }
+                                        `}
+                                        style={{
+                                            touchAction: "none",
+                                        }}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="text-3xl">
+                                                💳
+                                            </div>
+
+                                            <div>
+                                                <p className="font-bold text-white">
+                                                    Compte courant
+                                                </p>
+
+                                                <p className="mt-1 text-sm text-slate-400">
+                                                    Actuellement{" "}
+                                                    {getCurrentDisplayedAccountAmount(
+                                                        "compte-courant",
+                                                    ).toLocaleString("fr-FR", {
+                                                        minimumFractionDigits: 2,
+                                                        maximumFractionDigits: 2,
+                                                    })}{" "}
+                                                    €
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            className={`
+                                                flex h-6 w-6 items-center
+                                                justify-center rounded-full
+                                                border
+                                                ${
+                                                    selectedAccountId ===
+                                                    "compte-courant"
+                                                        ? "border-blue-400 bg-blue-500"
+                                                        : "border-white/20"
+                                                }
+                                            `}
+                                        >
+                                            {selectedAccountId ===
+                                                "compte-courant" && (
+                                                <div className="h-2 w-2 rounded-full bg-white" />
+                                            )}
+                                        </div>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onPointerUp={(event) => {
+                                            event.stopPropagation();
+                                            setSelectedAccountId("livret-a");
+                                        }}
+                                        onClick={(event) => {
+                                            if (event.detail === 0) {
+                                                setSelectedAccountId("livret-a");
+                                            }
+                                        }}
+                                        className={`
+                                            flex w-full items-center
+                                            justify-between rounded-xl
+                                            border p-4 text-left
+                                            transition
+                                            ${
+                                                selectedAccountId === "livret-a"
+                                                    ? "border-blue-400/60 bg-blue-500/15"
+                                                    : "border-white/10 bg-white/[0.04] active:bg-white/[0.08]"
+                                            }
+                                        `}
+                                        style={{
+                                            touchAction: "none",
+                                        }}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="text-3xl">
+                                                🐷
+                                            </div>
+
+                                            <div>
+                                                <p className="font-bold text-white">
+                                                    Livret A
+                                                </p>
+
+                                                <p className="mt-1 text-sm text-slate-400">
+                                                    Actuellement{" "}
+                                                    {getCurrentDisplayedAccountAmount(
+                                                        "livret-a",
+                                                    ).toLocaleString("fr-FR", {
+                                                        minimumFractionDigits: 2,
+                                                        maximumFractionDigits: 2,
+                                                    })}{" "}
+                                                    €
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            className={`
+                                                flex h-6 w-6 items-center
+                                                justify-center rounded-full
+                                                border
+                                                ${
+                                                    selectedAccountId === "livret-a"
+                                                        ? "border-blue-400 bg-blue-500"
+                                                        : "border-white/20"
+                                                }
+                                            `}
+                                        >
+                                            {selectedAccountId ===
+                                                "livret-a" && (
+                                                <div className="h-2 w-2 rounded-full bg-white" />
+                                            )}
+                                        </div>
+                                    </button>
+                                </div>
+
+                                <div
+                                    className="
+                                        mt-5 rounded-xl
+                                        border border-amber-400/20
+                                        bg-amber-500/10 p-4
+                                    "
+                                >
+                                    <p className="text-sm leading-relaxed text-amber-200">
+                                        Cette fonction sert notamment à corriger
+                                        rapidement ton solde après une période où
+                                        certaines opérations n'ont pas été
+                                        enregistrées dans LifeBoard.
+                                    </p>
+                                </div>
+
+                                <div className="mt-7 flex gap-4">
+                                    <button
+                                        type="button"
+                                        onPointerUp={(event) => {
+                                            event.stopPropagation();
+                                            closeAccountEditor();
+                                        }}
+                                        onClick={(event) => {
+                                            if (event.detail === 0) {
+                                                closeAccountEditor();
+                                            }
+                                        }}
+                                        className="
+                                            flex-1 rounded-xl
+                                            border border-white/10
+                                            bg-white/5
+                                            px-5 py-4 font-bold
+                                            active:bg-white/10
+                                        "
+                                        style={{
+                                            touchAction: "none",
+                                        }}
+                                    >
+                                        Annuler
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        disabled={!selectedAccountId}
+                                        onPointerUp={(event) => {
+                                            event.stopPropagation();
+
+                                            if (selectedAccountId) {
+                                                goToAccountAmountStep();
+                                            }
+                                        }}
+                                        onClick={(event) => {
+                                            if (
+                                                event.detail === 0 &&
+                                                selectedAccountId
+                                            ) {
+                                                goToAccountAmountStep();
+                                            }
+                                        }}
+                                        className="
+                                            flex-1 rounded-xl
+                                            bg-blue-600
+                                            px-5 py-4 font-bold text-white
+                                            active:bg-blue-700
+                                            disabled:cursor-not-allowed
+                                            disabled:opacity-40
+                                        "
+                                        style={{
+                                            touchAction: "none",
+                                        }}
+                                    >
+                                        Continuer
+                                    </button>
+                                </div>
+                            </>
+                        )}
+
+                        {/* ÉTAPE 2 : modification du montant */}
+                        {accountEditorStep === 2 &&
+                            selectedAccountId && (
+                                <>
+                                    <button
+                                        type="button"
+                                        onPointerUp={(event) => {
+                                            event.stopPropagation();
+                                            setAccountEditorStep(1);
+                                        }}
+                                        onClick={(event) => {
+                                            if (event.detail === 0) {
+                                                setAccountEditorStep(1);
+                                            }
+                                        }}
+                                        className="
+                                            mt-5 flex items-center gap-2
+                                            text-sm font-semibold
+                                            text-slate-400
+                                            active:text-white
+                                        "
+                                        style={{
+                                            touchAction: "none",
+                                        }}
+                                    >
+                                        <ArrowLeft size={18} />
+
+                                        Étape précédente
+                                    </button>
+
+                                    <div
+                                        className="
+                                            mt-5 rounded-xl
+                                            border border-white/10
+                                            bg-white/[0.04] p-4
+                                        "
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="text-3xl">
+                                                {selectedAccountId ===
+                                                "compte-courant"
+                                                    ? "💳"
+                                                    : "🐷"}
+                                            </div>
+
+                                            <div>
+                                                <p className="font-bold text-white">
+                                                    {selectedAccountId ===
+                                                    "compte-courant"
+                                                        ? "Compte courant"
+                                                        : "Livret A"}
+                                                </p>
+
+                                                <p className="mt-1 text-sm text-slate-400">
+                                                    Montant actuellement affiché
+                                                </p>
+
+                                                <p className="mt-1 text-xl font-bold text-blue-300">
+                                                    {getCurrentDisplayedAccountAmount(
+                                                        selectedAccountId,
+                                                    ).toLocaleString("fr-FR", {
+                                                        minimumFractionDigits: 2,
+                                                        maximumFractionDigits: 2,
+                                                    })}{" "}
+                                                    €
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-6">
+                                        <label>
+                                            <p className="mb-2 text-sm text-slate-400">
+                                                Nouveau montant
+                                            </p>
+
+                                            <div
+                                                className="
+                                                    flex items-center
+                                                    rounded-xl
+                                                    border border-white/10
+                                                    bg-white/[0.04]
+                                                    px-2
+                                                "
+                                            >
+                                                <input
+                                                    type="text"
+                                                    inputMode="decimal"
+                                                    pattern="[0-9]*[.,]?[0-9]*"
+                                                    autoComplete="off"
+                                                    value={accountAmountInput}
+                                                    onChange={(event) =>
+                                                        setAccountAmountInput(
+                                                            sanitizeMoneyValue(event.target.value),
+                                                        )
+                                                    }
+                                                    onKeyDown={(event) => {
+                                                        if (event.key === "Enter") {
+                                                            saveAccountDisplayedAmount();
+                                                        }
+                                                    }}
+                                                    className="
+                                                        min-w-0 flex-1
+                                                        bg-transparent
+                                                        px-2 py-4
+                                                        text-xl font-bold
+                                                        text-white
+                                                        outline-none
+                                                        select-text
+                                                    "
+                                                />
+
+                                                <button
+                                                    type="button"
+                                                    onMouseDown={(event) => event.preventDefault()}
+                                                    onClick={() => {
+                                                        if (!accountAmountInput.includes(",")) {
+                                                            setAccountAmountInput((currentValue) =>
+                                                                currentValue.length === 0
+                                                                    ? "0,"
+                                                                    : `${currentValue},`,
+                                                            );
+                                                        }
+                                                    }}
+                                                    className="
+                                                        mr-2 rounded-lg
+                                                        border border-white/10
+                                                        bg-white/10
+                                                        px-3 py-2
+                                                        text-lg font-bold
+                                                        text-white
+                                                        active:bg-white/20
+                                                    "
+                                                >
+                                                    ,
+                                                </button>
+
+                                                <span className="pr-2 text-xl font-bold text-slate-400">
+                                                    €
+                                                </span>
+                                            </div>
+                                        </label>
+                                    </div>
+
+                                    <div
+                                        className="
+                                            mt-5 rounded-xl
+                                            border border-blue-400/20
+                                            bg-blue-500/10 p-4
+                                        "
+                                    >
+                                        <p className="text-sm leading-relaxed text-blue-200">
+                                            Les anciennes opérations sont
+                                            conservées. LifeBoard ajustera la
+                                            valeur de base du compte afin que le
+                                            montant affiché corresponde
+                                            exactement au nouveau montant saisi.
+                                        </p>
+                                    </div>
+
+                                    <div className="mt-7 flex gap-4">
+                                        <button
+                                            type="button"
+                                            onPointerUp={(event) => {
+                                                event.stopPropagation();
+                                                setAccountEditorStep(1);
+                                            }}
+                                            onClick={(event) => {
+                                                if (event.detail === 0) {
+                                                    setAccountEditorStep(1);
+                                                }
+                                            }}
+                                            className="
+                                                flex flex-1 items-center
+                                                justify-center gap-2
+                                                rounded-xl
+                                                border border-white/10
+                                                bg-white/5
+                                                px-5 py-4 font-bold
+                                                active:bg-white/10
+                                            "
+                                            style={{
+                                                touchAction: "none",
+                                            }}
+                                        >
+                                            <ArrowLeft size={18} />
+
+                                            Précédent
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onPointerUp={(event) => {
+                                                event.stopPropagation();
+                                                saveAccountDisplayedAmount();
+                                            }}
+                                            onClick={(event) => {
+                                                if (event.detail === 0) {
+                                                    saveAccountDisplayedAmount();
+                                                }
+                                            }}
+                                            className="
+                                                flex-1 rounded-xl
+                                                bg-blue-600
+                                                px-5 py-4
+                                                font-bold text-white
+                                                active:bg-blue-700
+                                            "
+                                            style={{
+                                                touchAction: "none",
+                                            }}
+                                        >
+                                            Enregistrer
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                    </div>
+                </div>
+            )}
+            {showBudgetResetConfirmation && (
+                <div
+                    className="
+                        fixed inset-0 z-[80]
+                        flex items-center justify-center
+                        bg-black/75 p-6
+                        backdrop-blur-sm
+                    "
+                    style={{
+                        touchAction: "none",
+                    }}
+                >
+                    <div
+                        className="
+                            w-full max-w-lg
+                            rounded-2xl
+                            border border-amber-400/30
+                            bg-[#0b1623]
+                            p-8 shadow-2xl
+                        "
+                    >
+                        <div className="flex items-start justify-between gap-5">
+                            <div>
+                                <div
+                                    className="
+                                        mb-4 flex h-14 w-14
+                                        items-center justify-center
+                                        rounded-full
+                                        bg-amber-500/15
+                                        text-amber-300
+                                    "
+                                >
+                                    <RotateCcw size={30} />
+                                </div>
+
+                                <h2 className="text-2xl font-bold">
+                                    Réinitialiser les budgets ?
+                                </h2>
+                            </div>
+
+                            <button
+                                type="button"
+                                onPointerUp={(event) => {
+                                    event.stopPropagation();
+                                    setShowBudgetResetConfirmation(false);
+                                }}
+                                onClick={(event) => {
+                                    if (event.detail === 0) {
+                                        setShowBudgetResetConfirmation(false);
+                                    }
+                                }}
+                                className="rounded-lg p-2 active:bg-white/15"
+                                style={{
+                                    touchAction: "none",
+                                }}
+                                aria-label="Fermer"
+                            >
+                                <X />
+                            </button>
+                        </div>
+
+                        <p className="mt-6 text-slate-300">
+                            Cette action remet les montants de référence
+                            suivants :
+                        </p>
+
+                        <div className="mt-4 space-y-3">
+                            <div
+                                className="
+                                    flex items-center justify-between
+                                    rounded-xl border border-white/10
+                                    bg-white/[0.04] p-4
+                                "
+                            >
+                                <span className="font-medium text-slate-300">
+                                    Compte courant
+                                </span>
+
+                                <span className="text-xl font-bold text-amber-300">
+                                    1 000 €
+                                </span>
+                            </div>
+
+                            <div
+                                className="
+                                    flex items-center justify-between
+                                    rounded-xl border border-white/10
+                                    bg-white/[0.04] p-4
+                                "
+                            >
+                                <span className="font-medium text-slate-300">
+                                    Livret A
+                                </span>
+
+                                <span className="text-xl font-bold text-amber-300">
+                                    5 000 €
+                                </span>
+                            </div>
+                        </div>
+
+                        <div
+                            className="
+                                mt-5 rounded-xl
+                                border border-blue-400/20
+                                bg-blue-500/10 p-4
+                            "
+                        >
+                            <p className="text-sm leading-relaxed text-blue-200">
+                                Les montants actuellement affichés dans
+                                « Mes budgets » sur la page principale ne
+                                seront pas modifiés.
+                            </p>
+
+                            <p className="mt-2 text-sm leading-relaxed text-blue-200/70">
+                                Les opérations existantes ne seront pas
+                                supprimées ou modifiées.
+                            </p>
+                        </div>
+
+                        <div className="mt-7 flex gap-4">
+                            <button
+                                type="button"
+                                onPointerUp={(event) => {
+                                    event.stopPropagation();
+                                    setShowBudgetResetConfirmation(false);
+                                }}
+                                onClick={(event) => {
+                                    if (event.detail === 0) {
+                                        setShowBudgetResetConfirmation(false);
+                                    }
+                                }}
+                                className="
+                                    flex-1 rounded-xl
+                                    border border-white/10
+                                    bg-white/5
+                                    px-5 py-4
+                                    font-bold
+                                    active:bg-white/10
+                                "
+                                style={{
+                                    touchAction: "none",
+                                }}
+                            >
+                                Annuler
+                            </button>
+
+                            <button
+                                type="button"
+                                onPointerUp={(event) => {
+                                    event.stopPropagation();
+                                    resetBudgetAmounts();
+                                }}
+                                onClick={(event) => {
+                                    if (event.detail === 0) {
+                                        resetBudgetAmounts();
+                                    }
+                                }}
+                                className="
+                                    flex-1 rounded-xl
+                                    bg-amber-600
+                                    px-5 py-4
+                                    font-bold text-white
+                                    active:bg-amber-700
+                                "
+                                style={{
+                                    touchAction: "none",
+                                }}
+                            >
+                                Réinitialiser
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
