@@ -85,7 +85,11 @@ export default function DashboardGrid({
             return;
         }
 
-        const currentNetWorth = calculateNetWorth(budgets, operations);
+        const currentNetWorth = calculateNetWorth(
+            budgets,
+            operations,
+            settings.budgetResetDay,
+        );
 
         setNetWorthSnapshots((current) => [
             ...current,
@@ -100,6 +104,7 @@ export default function DashboardGrid({
         operations,
         netWorthSnapshots,
         setNetWorthSnapshots,
+        settings.budgetResetDay,
         isLoaded,
     ]);
 
@@ -396,6 +401,7 @@ export default function DashboardGrid({
                     budgets={budgets}
                     operations={operations}
                     snapshots={netWorthSnapshots}
+                    budgetResetDay={settings.budgetResetDay}
                 />
             </Card>
 

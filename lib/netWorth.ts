@@ -11,52 +11,142 @@ export type NetWorthChartPoint = {
     granularity: "month" | "day";
 };
 
-export function calculateNetWorth(budgets: Budget[], operations: Operation[]) {
+/*
+ * Retourne la date de début du cycle budgétaire
+ * contenant la date donnée.
+ */
+function getBudgetCycleStart(date: Date, budgetResetDay: number) {
+    const referenceDate = new Date(date);
+
+    const safeResetDay = Math.min(
+        Math.max(Math.trunc(budgetResetDay), 1),
+        31,
+    );
+
+    function createResetDate(year: number, month: number) {
+        const lastDayOfMonth = new Date(
+            year,
+            month + 1,
+            0,
+        ).getDate();
+
+        const resetDate = new Date(
+            year,
+            month,
+            Math.min(safeResetDay, lastDayOfMonth),
+        );
+
+        resetDate.setHours(0, 0, 0, 0);
+
+        return resetDate;
+    }
+
+    const currentMonthReset = createResetDate(
+        referenceDate.getFullYear(),
+        referenceDate.getMonth(),
+    );
+
+    if (referenceDate.getTime() >= currentMonthReset.getTime()) {
+        return currentMonthReset;
+    }
+
+    return createResetDate(
+        referenceDate.getFullYear(),
+        referenceDate.getMonth() - 1,
+    );
+}
+
+/*
+ * Retourne uniquement les opérations appartenant
+ * au cycle budgétaire contenant referenceDate.
+ *
+ * Pour une date historique, seules les opérations
+ * déjà réalisées à cette date sont conservées.
+ */
+function getOperationsForBudgetCycle(
+    operations: Operation[],
+    budgetResetDay: number,
+    referenceDate: Date,
+) {
+    const cycleStart = getBudgetCycleStart(
+        referenceDate,
+        budgetResetDay,
+    );
+
+    const endOfDay = new Date(referenceDate);
+
+    endOfDay.setHours(23, 59, 59, 999);
+
+    return operations.filter((operation) => {
+        const operationDate = new Date(operation.createdAt);
+
+        if (Number.isNaN(operationDate.getTime())) {
+            return false;
+        }
+
+        return (
+            operationDate.getTime() >= cycleStart.getTime() &&
+            operationDate.getTime() <= endOfDay.getTime()
+        );
+    });
+}
+
+export function calculateNetWorth(
+    budgets: Budget[],
+    operations: Operation[],
+    budgetResetDay: number,
+    referenceDate = new Date(),
+) {
+    const cycleOperations = getOperationsForBudgetCycle(
+        operations,
+        budgetResetDay,
+        referenceDate,
+    );
+
     return budgets
         .filter((budget) => budget.type === "account")
         .reduce((total, account) => {
-            const operationImpact = operations.reduce(
+            const operationImpact = cycleOperations.reduce(
                 (impactTotal, operation) =>
-                    impactTotal + (operation.accountImpact[account.id] ?? 0),
+                    impactTotal +
+                    (operation.accountImpact[account.id] ?? 0),
                 0,
             );
 
-            return total + account.amount + operationImpact;
+            /*
+             * Même comportement que BudgetList :
+             * un compte ne peut pas afficher moins de 0 €.
+             */
+            const currentAmount = Math.max(
+                account.amount + operationImpact,
+                0,
+            );
+
+            return total + currentAmount;
         }, 0);
 }
 
 /**
  * Calcule le patrimoine à la fin d'une journée donnée.
- *
- * Les montants définis dans les comptes servent de base,
- * puis seules les opérations antérieures à la date sont ajoutées.
  */
 export function calculateNetWorthAtDate(
     budgets: Budget[],
     operations: Operation[],
     date: Date,
+    budgetResetDay: number,
 ) {
-    const endOfDay = new Date(date);
-
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const operationsUntilDate = operations.filter((operation) => {
-        const operationDate = new Date(operation.createdAt);
-
-        return (
-            !Number.isNaN(operationDate.getTime()) &&
-            operationDate.getTime() <= endOfDay.getTime()
-        );
-    });
-
-    return calculateNetWorth(budgets, operationsUntilDate);
+    return calculateNetWorth(
+        budgets,
+        operations,
+        budgetResetDay,
+        date,
+    );
 }
 
 export function getCurrentMonthKey(date = new Date()) {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
-        2,
-        "0",
-    )}`;
+    return `${date.getFullYear()}-${String(
+        date.getMonth() + 1,
+    ).padStart(2, "0")}`;
 }
 
 export function getMonthLabel(date = new Date()) {
@@ -77,7 +167,10 @@ function getDateKey(date: Date) {
 function parseMonthKey(month: string) {
     const [year, monthNumber] = month.split("-").map(Number);
 
-    if (!Number.isFinite(year) || !Number.isFinite(monthNumber)) {
+    if (
+        !Number.isFinite(year) ||
+        !Number.isFinite(monthNumber)
+    ) {
         return null;
     }
 
@@ -88,12 +181,14 @@ export function buildNetWorthChartData({
     budgets,
     operations,
     snapshots,
+    budgetResetDay,
     now = new Date(),
     dailyHistoryDays = 30,
 }: {
     budgets: Budget[];
     operations: Operation[];
     snapshots: NetWorthSnapshot[];
+    budgetResetDay: number;
     now?: Date;
     dailyHistoryDays?: number;
 }): NetWorthChartPoint[] {
@@ -101,13 +196,34 @@ export function buildNetWorthChartData({
 
     today.setHours(0, 0, 0, 0);
 
-    const dailyStartDate = new Date(today);
+    const requestedDailyStartDate = new Date(today);
 
-    dailyStartDate.setDate(dailyStartDate.getDate() - (dailyHistoryDays - 1));
+    requestedDailyStartDate.setDate(
+        requestedDailyStartDate.getDate() -
+            (dailyHistoryDays - 1),
+    );
 
     /*
-     * On garde uniquement les snapshots mensuels
-     * réellement antérieurs à la période journalière.
+     * Avec le système actuel, budget.amount représente
+     * la base du cycle courant.
+     *
+     * On ne reconstruit donc pas artificiellement les jours
+     * appartenant à un ancien cycle avec la base actuelle.
+     */
+    const currentCycleStart = getBudgetCycleStart(
+        today,
+        budgetResetDay,
+    );
+
+    const dailyStartDate = new Date(
+        Math.max(
+            requestedDailyStartDate.getTime(),
+            currentCycleStart.getTime(),
+        ),
+    );
+
+    /*
+     * Les anciens snapshots mensuels sont conservés.
      */
     const monthlyPoints: NetWorthChartPoint[] = snapshots
         .map((snapshot): NetWorthChartPoint | null => {
@@ -120,10 +236,11 @@ export function buildNetWorthChartData({
             return {
                 key: `month-${snapshot.month}`,
                 label: snapshot.label,
-                tooltipLabel: snapshotDate.toLocaleDateString("fr-FR", {
-                    month: "long",
-                    year: "numeric",
-                }),
+                tooltipLabel:
+                    snapshotDate.toLocaleDateString("fr-FR", {
+                        month: "long",
+                        year: "numeric",
+                    }),
                 value: snapshot.value,
                 timestamp: snapshotDate.getTime(),
                 granularity: "month",
@@ -131,13 +248,10 @@ export function buildNetWorthChartData({
         })
         .filter(
             (point): point is NetWorthChartPoint =>
-                point !== null && point.timestamp < dailyStartDate.getTime(),
+                point !== null &&
+                point.timestamp < dailyStartDate.getTime(),
         );
 
-    /*
-     * On reconstruit ensuite chaque journée
-     * des 30 derniers jours.
-     */
     const dailyPoints: NetWorthChartPoint[] = [];
 
     const cursor = new Date(dailyStartDate);
@@ -151,13 +265,19 @@ export function buildNetWorthChartData({
                 day: "2-digit",
                 month: "2-digit",
             }),
-            tooltipLabel: pointDate.toLocaleDateString("fr-FR", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-            }),
-            value: calculateNetWorthAtDate(budgets, operations, pointDate),
+            tooltipLabel:
+                pointDate.toLocaleDateString("fr-FR", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                }),
+            value: calculateNetWorthAtDate(
+                budgets,
+                operations,
+                pointDate,
+                budgetResetDay,
+            ),
             timestamp: pointDate.getTime(),
             granularity: "day",
         });
@@ -167,6 +287,7 @@ export function buildNetWorthChartData({
 
     return [...monthlyPoints, ...dailyPoints].sort(
         (firstPoint, secondPoint) =>
-            firstPoint.timestamp - secondPoint.timestamp,
+            firstPoint.timestamp -
+            secondPoint.timestamp,
     );
 }

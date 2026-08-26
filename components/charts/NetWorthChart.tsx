@@ -22,6 +22,7 @@ type NetWorthChartProps = {
     budgets: Budget[];
     operations: Operation[];
     snapshots: NetWorthSnapshot[];
+    budgetResetDay: number;
 };
 
 type TooltipPayload = {
@@ -60,10 +61,16 @@ export default function NetWorthChart({
     budgets,
     operations,
     snapshots,
+    budgetResetDay,
 }: NetWorthChartProps) {
     const currentNetWorth = useMemo(
-        () => calculateNetWorth(budgets, operations),
-        [budgets, operations],
+        () =>
+            calculateNetWorth(
+                budgets,
+                operations,
+                budgetResetDay,
+            ),
+        [budgets, operations, budgetResetDay],
     );
 
     const data = useMemo(
@@ -72,9 +79,15 @@ export default function NetWorthChart({
                 budgets,
                 operations,
                 snapshots,
+                budgetResetDay,
                 dailyHistoryDays: 30,
             }),
-        [budgets, operations, snapshots],
+        [
+            budgets,
+            operations,
+            snapshots,
+            budgetResetDay,
+        ],
     );
 
     return (
