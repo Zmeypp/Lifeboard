@@ -71,7 +71,7 @@ export async function POST() {
     );
 
     try {
-        const processPython = spawn("python3", [scriptPath], {
+        const processPython = spawn("py", [scriptPath], {
             cwd: process.cwd(),
             shell: false,
             stdio: ["ignore", "pipe", "pipe"],

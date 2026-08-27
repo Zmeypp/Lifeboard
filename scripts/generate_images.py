@@ -1,14 +1,15 @@
+import base64
 import hashlib
 import json
 import os
 import re
 import time
 import unicodedata
-import urllib.parse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import requests
+
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
@@ -23,12 +24,29 @@ STATUS_FILE = ROOT_DIR / "scripts" / "generation_status.json"
 MAX_WORKERS = 1
 MAX_ATTEMPTS = 5
 
-API_KEY = "sk_nlS9tHNY9NY0TNQSS6sLcpKmsE19Tund"
+CLOUDFLARE_ACCOUNT_ID = os.environ.get(
+    "CLOUDFLARE_ACCOUNT_ID"
+)
 
-if not API_KEY:
+CLOUDFLARE_API_TOKEN = os.environ.get(
+    "CLOUDFLARE_API_TOKEN"
+)
+
+CLOUDFLARE_MODEL = (
+    "@cf/black-forest-labs/flux-2-klein-4b"
+)
+
+
+if not CLOUDFLARE_ACCOUNT_ID:
     raise RuntimeError(
-        "La clé API Pollinations est absente."
+        "La variable CLOUDFLARE_ACCOUNT_ID est absente."
     )
+
+if not CLOUDFLARE_API_TOKEN:
+    raise RuntimeError(
+        "La variable CLOUDFLARE_API_TOKEN est absente."
+    )
+
 
 OUTPUT_DIR.mkdir(
     parents=True,
@@ -51,7 +69,9 @@ def write_status(
         "error": None,
     }
 
-    temporary_status = STATUS_FILE.with_suffix(".tmp.json")
+    temporary_status = STATUS_FILE.with_suffix(
+        ".tmp.json"
+    )
 
     temporary_status.write_text(
         json.dumps(
@@ -70,7 +90,11 @@ def write_status(
 
 def slugify(text: str) -> str:
     text = text.lower()
-    text = unicodedata.normalize("NFD", text)
+
+    text = unicodedata.normalize(
+        "NFD",
+        text,
+    )
 
     text = "".join(
         character
@@ -78,17 +102,40 @@ def slugify(text: str) -> str:
         if unicodedata.category(character) != "Mn"
     )
 
-    text = re.sub(r"[^\w\s-]", "", text)
-    text = re.sub(r"\s+", "_", text)
+    text = re.sub(
+        r"[^\w\s-]",
+        "",
+        text,
+    )
+
+    text = re.sub(
+        r"\s+",
+        "_",
+        text,
+    )
 
     return text[:80]
 
 
-def create_seed(date: str, title: str) -> int:
-    value = f"{date}-{title}".encode("utf-8")
-    digest = hashlib.sha256(value).hexdigest()
+def create_seed(
+    date: str,
+    title: str,
+) -> int:
+    # On ajoute le temps pour obtenir une image
+    # différente à chaque nouvelle génération.
+    value = (
+        f"{date}-{title}-{time.time_ns()}"
+        .encode("utf-8")
+    )
 
-    return int(digest[:8], 16) % 999999
+    digest = hashlib.sha256(
+        value
+    ).hexdigest()
+
+    return int(
+        digest[:8],
+        16,
+    ) % 999999
 
 
 def clear_output_directory():
@@ -101,74 +148,181 @@ def get_retry_delay(
     response: requests.Response,
     attempt: int,
 ) -> int:
-    retry_after = response.headers.get("Retry-After")
+    retry_after = response.headers.get(
+        "Retry-After"
+    )
 
     if retry_after:
         try:
-            return max(int(retry_after), 10)
+            return max(
+                int(retry_after),
+                10,
+            )
         except ValueError:
             pass
 
-    return 15 * attempt
+    return 10 * attempt
 
 
-def build_image_prompt(title: str, meal_prompt: str) -> str:
+def build_image_prompt(
+    day: dict,
+) -> str:
+    meal = day["meal"]
+
+    title = meal["title"]
+
+    description = meal.get(
+        "description",
+        "",
+    )
+
+    original_prompt = meal.get(
+        "image_prompt",
+        "",
+    )
+
+    ingredients = [
+        ingredient["name"]
+        for ingredient in day.get(
+            "ingredients",
+            [],
+        )
+        if ingredient.get("name")
+    ]
+
+    ingredient_text = ", ".join(
+        ingredients
+    )
+
     return f"""
-Authentic French bistro food photography of "{title}".
+Create a realistic photograph of this exact finished meal.
 
-Dish description:
-{meal_prompt}
+DISH:
+{title}
 
-The meal must look realistic, homemade, generous and comforting,
-like a proper dish served in a traditional French brasserie or
-Northern France estaminet.
+DESCRIPTION:
+{description}
 
-Visual style:
-- authentic French bistro / estaminet
-- hearty comfort food
-- generous realistic portion
-- rustic ceramic plate or traditional restaurant plate
-- simple, slightly imperfect homemade presentation
-- visible textures and ingredients
-- rich sauce when appropriate
-- natural appetizing food
-- warm restaurant atmosphere
-- wooden bistro table
-- subtle background, dish remains the main subject
-- close three-quarter food photography angle
-- professional but realistic food photography
-- natural warm lighting
-- shallow depth of field
-- highly detailed food textures
-- no excessive decoration
-- no fine dining plating
-- no tiny portions
-- no molecular cuisine
-- no unrealistic ingredients
-- no text
-- no logo
-- no people
-- no hands
-- no cutlery covering the food
+INGREDIENTS USED:
+{ingredient_text}
 
-The generated image must accurately represent the described dish.
-Do not invent major ingredients that are not mentioned in the dish description.
+VISUAL DESCRIPTION:
+{original_prompt}
+
+The image must immediately look like the named dish.
+
+This is real everyday French food, not fine dining.
+
+STRICT FOOD ACCURACY:
+
+- Keep every important ingredient recognizable.
+- Respect the real physical form of the food.
+- Do not transform solid food into puree, soup or an artificial sauce.
+- Do not invent ingredients.
+- Do not add decorative ingredients that are not part of the recipe.
+- Do not add parsley, herbs or greens unless they belong in the meal.
+- Do not drown the dish in sauce.
+- Do not create strange orange, yellow or glossy sauces.
+- Do not stack food vertically.
+- Do not make artistic Michelin-style plating.
+
+IMPORTANT FOOD SHAPES:
+
+- Pasta must clearly show individual pasta pieces or strands.
+- Rice must clearly show individual cooked rice grains.
+- Minced beef must visibly look like cooked minced beef.
+- Chicken must visibly look like real pieces of chicken.
+- Potatoes must visibly look like pieces of potato.
+- Salad leaves must remain recognizable.
+- An omelette must clearly look like a real folded or pan-cooked omelette.
+- Croque monsieur must clearly look like grilled sliced bread filled with ham and cheese.
+- Wraps must clearly look like wheat tortillas containing their filling.
+- Hachis Parmentier must visibly have a minced beef layer and a mashed potato layer.
+- A gratin must visibly look baked, with recognizable ingredients underneath the browned surface.
+
+STYLE:
+
+A generous comforting meal served in a traditional French bistro,
+brasserie or Northern France estaminet.
+
+It should feel like genuine homemade comfort food:
+simple, generous, warm and appetizing.
+
+Serve the food on a normal ceramic restaurant plate,
+bistro plate, bowl, casserole dish or gratin dish,
+depending on what is appropriate for the actual recipe.
+
+PHOTOGRAPHY:
+
+Real food photography.
+Realistic proportions.
+Realistic textures.
+Slight natural imperfections.
+Warm neutral restaurant lighting.
+Wooden bistro table.
+Three-quarter camera angle.
+Dish filling most of the image.
+Natural shallow depth of field.
+No extreme blur.
+No artificial CGI appearance.
+No advertisement-style perfection.
+
+The final result must look like a photograph of a real meal
+that someone could actually receive in a French bistro.
+
+No text.
+No logo.
+No people.
+No hands.
 """.strip()
 
 
-def generate_image(day: dict) -> Path:
+def get_cloudflare_url() -> str:
+    return (
+        "https://api.cloudflare.com/client/v4/accounts/"
+        f"{CLOUDFLARE_ACCOUNT_ID}"
+        f"/ai/run/{CLOUDFLARE_MODEL}"
+    )
+
+
+def decode_cloudflare_image(
+    image_base64: str,
+) -> bytes:
+    # Certains services peuvent renvoyer :
+    #
+    # data:image/jpeg;base64,xxxx
+    #
+    # On supporte les deux formats.
+
+    if "," in image_base64 and image_base64.startswith(
+        "data:"
+    ):
+        image_base64 = image_base64.split(
+            ",",
+            1,
+        )[1]
+
+    try:
+        return base64.b64decode(
+            image_base64
+        )
+    except Exception as error:
+        raise RuntimeError(
+            "Impossible de décoder l'image "
+            "renvoyée par Cloudflare."
+        ) from error
+
+
+def generate_image(
+    day: dict,
+) -> Path:
     date = day["date"]
     meal = day["meal"]
 
     title = meal["title"]
-    prompt = build_image_prompt(
-        title,
-        meal["image_prompt"],
-    )
 
-    encoded_prompt = urllib.parse.quote(
-        prompt,
-        safe="",
+    prompt = build_image_prompt(
+        day
     )
 
     seed = create_seed(
@@ -176,16 +330,7 @@ def generate_image(day: dict) -> Path:
         title,
     )
 
-    url = (
-        f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?model=flux"
-        f"&width=1024"
-        f"&height=768"
-        f"&nologo=true"
-        f"&private=true"
-        f"&enhance=false"
-        f"&seed={seed}"
-    )
+    url = get_cloudflare_url()
 
     filename = (
         OUTPUT_DIR
@@ -198,7 +343,10 @@ def generate_image(day: dict) -> Path:
 
     last_error: Exception | None = None
 
-    for attempt in range(1, MAX_ATTEMPTS + 1):
+    for attempt in range(
+        1,
+        MAX_ATTEMPTS + 1,
+    ):
         try:
             print(
                 f"Génération : {title} "
@@ -206,13 +354,77 @@ def generate_image(day: dict) -> Path:
                 flush=True,
             )
 
-            response = requests.get(
+            response = requests.post(
                 url,
                 headers={
-                    "Authorization": f"Bearer {API_KEY}",
+                    "Authorization":
+                        f"Bearer {CLOUDFLARE_API_TOKEN}",
                 },
+
+                # IMPORTANT :
+                # Cloudflare demande du multipart/form-data
+                # pour FLUX.2 Klein.
+                files={
+                    "prompt": (
+                        None,
+                        prompt,
+                    ),
+                    "width": (
+                        None,
+                        "1024",
+                    ),
+                    "height": (
+                        None,
+                        "768",
+                    ),
+                    "guidance": (
+                        None,
+                        "4.5",
+                    ),
+                    "seed": (
+                        None,
+                        str(seed),
+                    ),
+                },
+
                 timeout=300,
             )
+
+            # ------------------------------
+            # Erreurs non retentables
+            # ------------------------------
+
+            if response.status_code == 401:
+                raise RuntimeError(
+                    "FATAL: Token Cloudflare invalide "
+                    "ou non autorisé."
+                )
+
+            if response.status_code == 403:
+                try:
+                    details = response.json()
+                except Exception:
+                    details = response.text[:500]
+
+                raise RuntimeError(
+                    "FATAL: Cloudflare refuse l'accès "
+                    f"au modèle : {details}"
+                )
+
+            if response.status_code == 400:
+                try:
+                    details = response.json()
+                except Exception:
+                    details = response.text[:500]
+
+                raise RuntimeError(
+                    "FATAL: Requête Cloudflare invalide : "
+                    f"{details}"
+                )
+
+            # ------------------------------
+            # Rate limit / capacité
+            # ------------------------------
 
             if response.status_code == 429:
                 delay = get_retry_delay(
@@ -222,41 +434,98 @@ def generate_image(day: dict) -> Path:
 
                 if attempt < MAX_ATTEMPTS:
                     print(
-                        f"Limite Pollinations atteinte pour « {title} ». "
-                        f"Nouvelle tentative dans {delay} secondes.",
+                        "Cloudflare est temporairement "
+                        "indisponible ou la limite est atteinte. "
+                        f"Nouvelle tentative dans {delay}s.",
                         flush=True,
                     )
 
-                    time.sleep(delay)
+                    time.sleep(
+                        delay
+                    )
+
                     continue
 
                 raise RuntimeError(
-                    "Pollinations refuse toujours la requête "
-                    f"après {MAX_ATTEMPTS} tentatives."
+                    "Cloudflare refuse toujours "
+                    "la génération après plusieurs tentatives."
                 )
+
+            # ------------------------------
+            # Autres erreurs HTTP
+            # ------------------------------
+
+            if response.status_code >= 500:
+                if attempt < MAX_ATTEMPTS:
+                    delay = 5 * attempt
+
+                    print(
+                        f"Erreur serveur Cloudflare "
+                        f"{response.status_code}. "
+                        f"Nouvelle tentative dans {delay}s.",
+                        flush=True,
+                    )
+
+                    time.sleep(
+                        delay
+                    )
+
+                    continue
 
             response.raise_for_status()
 
-            content_type = response.headers.get(
-                "Content-Type",
-                "",
-            )
+            # ------------------------------
+            # Réponse JSON
+            # ------------------------------
 
-            if "image" not in content_type.lower():
-                response_preview = response.text[:500]
-
+            try:
+                data = response.json()
+            except ValueError as error:
                 raise RuntimeError(
-                    "Pollinations a renvoyé une réponse non-image : "
-                    f"{response_preview}"
+                    "Cloudflare a renvoyé une réponse "
+                    "qui n'est pas du JSON."
+                ) from error
+
+            if data.get("success") is not True:
+                raise RuntimeError(
+                    "Cloudflare a refusé la génération : "
+                    f"{data}"
                 )
 
-            if not response.content:
+            result = data.get(
+                "result"
+            )
+
+            if not isinstance(
+                result,
+                dict,
+            ):
                 raise RuntimeError(
-                    "Pollinations a renvoyé une image vide."
+                    "Réponse Cloudflare invalide : "
+                    "champ result absent."
+                )
+
+            image_base64 = result.get(
+                "image"
+            )
+
+            if not image_base64:
+                raise RuntimeError(
+                    "Cloudflare n'a renvoyé "
+                    "aucune image."
+                )
+
+            image_bytes = decode_cloudflare_image(
+                image_base64
+            )
+
+            if not image_bytes:
+                raise RuntimeError(
+                    "L'image Cloudflare est vide."
                 )
 
             temporary_filename.write_bytes(
-                response.content
+                image_bytes
             )
 
             if (
@@ -264,7 +533,8 @@ def generate_image(day: dict) -> Path:
                 or temporary_filename.stat().st_size == 0
             ):
                 raise RuntimeError(
-                    f"L'image temporaire {temporary_filename.name} "
+                    f"L'image temporaire "
+                    f"{temporary_filename.name} "
                     "est vide."
                 )
 
@@ -291,26 +561,38 @@ def generate_image(day: dict) -> Path:
             if temporary_filename.exists():
                 temporary_filename.unlink()
 
+            # 400 / 401 / 403 :
+            # inutile de faire 5 essais.
+            if str(error).startswith(
+                "FATAL:"
+            ):
+                raise
+
             if attempt < MAX_ATTEMPTS:
                 delay = 5 * attempt
 
                 print(
-                    f"Nouvelle tentative dans {delay} secondes.",
+                    f"Nouvelle tentative "
+                    f"dans {delay} secondes.",
                     flush=True,
                 )
 
-                time.sleep(delay)
+                time.sleep(
+                    delay
+                )
 
     raise RuntimeError(
         f"Impossible de générer l'image « {title} » "
-        f"après {MAX_ATTEMPTS} tentatives : {last_error}"
+        f"après {MAX_ATTEMPTS} tentatives : "
+        f"{last_error}"
     )
 
 
 def main():
     if not INPUT_JSON.exists():
         raise FileNotFoundError(
-            f"Planning introuvable : {INPUT_JSON}"
+            f"Planning introuvable : "
+            f"{INPUT_JSON}"
         )
 
     clear_output_directory()
@@ -319,17 +601,27 @@ def main():
         "r",
         encoding="utf-8",
     ) as file:
-        data = json.load(file)
+        data = json.load(
+            file
+        )
 
-    days = data.get("days")
+    days = data.get(
+        "days"
+    )
 
-    if not isinstance(days, list) or len(days) != 7:
+    if (
+        not isinstance(days, list)
+        or len(days) != 7
+    ):
         raise ValueError(
-            "Le planning doit contenir exactement 7 jours."
+            "Le planning doit contenir "
+            "exactement 7 jours."
         )
 
     generated_count = 0
+
     generated_images: list[Path] = []
+
     errors: list[str] = []
 
     write_status(
@@ -341,17 +633,28 @@ def main():
     with ThreadPoolExecutor(
         max_workers=MAX_WORKERS,
     ) as executor:
+
         futures = {
-            executor.submit(generate_image, day): day
+            executor.submit(
+                generate_image,
+                day,
+            ): day
             for day in days
         }
 
-        for future in as_completed(futures):
-            day = futures[future]
+        for future in as_completed(
+            futures
+        ):
+            day = futures[
+                future
+            ]
+
             title = day["meal"]["title"]
 
             try:
-                generated_image = future.result()
+                generated_image = (
+                    future.result()
+                )
 
                 generated_images.append(
                     generated_image
@@ -371,9 +674,9 @@ def main():
                     flush=True,
                 )
 
-                # Petite pause entre deux images réussies
-                # pour limiter les erreurs 429.
-                time.sleep(3)
+                # Petite pause pour ne pas
+                # bombarder Workers AI.
+                time.sleep(2)
 
             except Exception as error:
                 errors.append(
@@ -393,7 +696,8 @@ def main():
         )
 
     print(
-        "Les 7 images ont été générées avec succès.",
+        "Les 7 images ont été générées "
+        "avec succès via Cloudflare Workers AI.",
         flush=True,
     )
 
