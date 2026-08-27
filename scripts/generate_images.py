@@ -112,12 +112,59 @@ def get_retry_delay(
     return 15 * attempt
 
 
+def build_image_prompt(title: str, meal_prompt: str) -> str:
+    return f"""
+Authentic French bistro food photography of "{title}".
+
+Dish description:
+{meal_prompt}
+
+The meal must look realistic, homemade, generous and comforting,
+like a proper dish served in a traditional French brasserie or
+Northern France estaminet.
+
+Visual style:
+- authentic French bistro / estaminet
+- hearty comfort food
+- generous realistic portion
+- rustic ceramic plate or traditional restaurant plate
+- simple, slightly imperfect homemade presentation
+- visible textures and ingredients
+- rich sauce when appropriate
+- natural appetizing food
+- warm restaurant atmosphere
+- wooden bistro table
+- subtle background, dish remains the main subject
+- close three-quarter food photography angle
+- professional but realistic food photography
+- natural warm lighting
+- shallow depth of field
+- highly detailed food textures
+- no excessive decoration
+- no fine dining plating
+- no tiny portions
+- no molecular cuisine
+- no unrealistic ingredients
+- no text
+- no logo
+- no people
+- no hands
+- no cutlery covering the food
+
+The generated image must accurately represent the described dish.
+Do not invent major ingredients that are not mentioned in the dish description.
+""".strip()
+
+
 def generate_image(day: dict) -> Path:
     date = day["date"]
     meal = day["meal"]
 
     title = meal["title"]
-    prompt = meal["image_prompt"]
+    prompt = build_image_prompt(
+        title,
+        meal["image_prompt"],
+    )
 
     encoded_prompt = urllib.parse.quote(
         prompt,

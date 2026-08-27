@@ -15,6 +15,7 @@ import {
     ArrowLeft,
     Smartphone,
     QrCode,
+    Download,
 } from "lucide-react";
 import type { AppSettings } from "@/data/settings";
 import type { Budget } from "@/data/budgets";
@@ -115,6 +116,14 @@ export default function SettingsPage({
         useState<EditableAccountId | null>(null);
 
     const [accountAmountInput, setAccountAmountInput] = useState("");
+
+    const [showMobileInstall, setShowMobileInstall] = useState(false);
+
+    const [mobileInstallUrl, setMobileInstallUrl] = useState<string | null>(null);
+
+    const [isLoadingMobileInstall, setIsLoadingMobileInstall] = useState(false);
+
+    const [mobileInstallError, setMobileInstallError] = useState<string | null>(null);
 
     const [
         showMobilePairing,
@@ -743,6 +752,74 @@ export default function SettingsPage({
         }
     }
 
+    async function resolveMobileBaseUrl() {
+        let baseUrl = window.location.origin;
+
+        const hostname = window.location.hostname;
+
+        /*
+         * Si LifeBoard est ouvert avec son IP réseau,
+         * on peut utiliser directement l'origine.
+         *
+         * Si le Raspberry affiche LifeBoard via localhost,
+         * on demande au serveur son IP réseau réelle.
+         */
+        if (
+            hostname === "localhost" ||
+            hostname === "127.0.0.1" ||
+            hostname === "::1"
+        ) {
+            const response = await fetch("/api/mobile/pairing", {
+                method: "GET",
+                cache: "no-store",
+            });
+
+            const data = await response.json();
+
+            if (
+                !response.ok ||
+                data.success !== true ||
+                !data.baseUrl
+            ) {
+                throw new Error(
+                    data.message ??
+                        "Impossible de déterminer l'adresse de LifeBoard.",
+                );
+            }
+
+            baseUrl = data.baseUrl;
+        }
+
+        return baseUrl.replace(/\/$/, "");
+    }
+
+    async function openMobileInstall() {
+        setShowMobileInstall(true);
+        setIsLoadingMobileInstall(true);
+        setMobileInstallError(null);
+        setMobileInstallUrl(null);
+
+        try {
+            const baseUrl = await resolveMobileBaseUrl();
+            const apkUrl = `${baseUrl}/mobile/LifeBoard-Mobile.apk`;
+
+            setMobileInstallUrl(apkUrl);
+        } catch (error) {
+            console.error(
+                "Erreur génération QR d'installation LifeBoard Mobile :",
+                error,
+            );
+
+            setMobileInstallError(
+                error instanceof Error
+                    ? error.message
+                    : "Impossible de générer le QR code d'installation.",
+            );
+        } finally {
+            setIsLoadingMobileInstall(false);
+        }
+    }
+
     async function openMobilePairing() {
         setShowMobilePairing(true);
         setIsLoadingMobilePairing(true);
@@ -751,46 +828,7 @@ export default function SettingsPage({
         setMobilePairingUrl(null);
 
         try {
-            let baseUrl = window.location.origin;
-
-            const hostname =
-                window.location.hostname;
-
-            /*
-            * Si LifeBoard est ouvert avec son IP réseau,
-            * on peut utiliser directement l'origine.
-            *
-            * Si le Raspberry affiche LifeBoard via localhost,
-            * on demande au serveur son IP réseau réelle.
-            */
-            if (
-                hostname === "localhost" ||
-                hostname === "127.0.0.1" ||
-                hostname === "::1"
-            ) {
-                const response = await fetch(
-                    "/api/mobile/pairing",
-                    {
-                        method: "GET",
-                        cache: "no-store",
-                    },
-                );
-
-                const data = await response.json();
-
-                if (
-                    !response.ok ||
-                    data.success !== true ||
-                    !data.baseUrl
-                ) {
-                    throw new Error(
-                        data.message ??
-                            "Impossible de déterminer l'adresse de LifeBoard.",
-                    );
-                }
-
-                baseUrl = data.baseUrl;
-            }
+            const baseUrl = await resolveMobileBaseUrl();
 
             const pairingData = JSON.stringify({
                 type: "lifeboard-pair",
@@ -1256,37 +1294,205 @@ export default function SettingsPage({
 
                 <Section title="LifeBoard Mobile">
                     <p className="text-sm leading-relaxed text-slate-400">
-                        Connecte LifeBoard Mobile à cet appareil pour
-                        synchroniser tes paiements et tes opérations.
+                        Installe LifeBoard Mobile sur un téléphone Android puis
+                        connecte-le à cet appareil pour synchroniser tes paiements
+                        et tes opérations.
                     </p>
 
-                    <button
-                        type="button"
-                        onPointerUp={(event) => {
-                            event.stopPropagation();
-                            void openMobilePairing();
-                        }}
-                        onClick={(event) => {
-                            if (event.detail === 0) {
+                    <div className="space-y-3">
+                        <button
+                            type="button"
+                            onPointerUp={(event) => {
+                                event.stopPropagation();
+                                void openMobileInstall();
+                            }}
+                            onClick={(event) => {
+                                if (event.detail === 0) {
+                                    void openMobileInstall();
+                                }
+                            }}
+                            className="
+                                flex w-full items-center justify-center gap-3
+                                rounded-xl border border-emerald-400/30
+                                bg-emerald-500/10 px-5 py-4
+                                font-bold text-emerald-300
+                                active:bg-emerald-500/20
+                            "
+                            style={{
+                                touchAction: "none",
+                            }}
+                        >
+                            <Download size={22} />
+
+                            Installer LifeBoard Mobile
+                        </button>
+
+                        <button
+                            type="button"
+                            onPointerUp={(event) => {
+                                event.stopPropagation();
                                 void openMobilePairing();
-                            }
-                        }}
+                            }}
+                            onClick={(event) => {
+                                if (event.detail === 0) {
+                                    void openMobilePairing();
+                                }
+                            }}
+                            className="
+                                flex w-full items-center justify-center gap-3
+                                rounded-xl border border-indigo-400/30
+                                bg-indigo-500/10 px-5 py-4
+                                font-bold text-indigo-300
+                                active:bg-indigo-500/20
+                            "
+                            style={{
+                                touchAction: "none",
+                            }}
+                        >
+                            <Smartphone size={22} />
+
+                            Connecter un téléphone
+                        </button>
+                    </div>
+                </Section>
+
+                {showMobileInstall && (
+                    <div
                         className="
-                            flex w-full items-center justify-center gap-3
-                            rounded-xl border border-indigo-400/30
-                            bg-indigo-500/10 px-5 py-4
-                            font-bold text-indigo-300
-                            active:bg-indigo-500/20
+                            fixed inset-0 z-[100]
+                            flex items-center justify-center
+                            bg-black/75 p-6
+                            backdrop-blur-sm
                         "
                         style={{
                             touchAction: "none",
                         }}
                     >
-                        <Smartphone size={22} />
+                        <div
+                            className="
+                                w-full max-w-lg
+                                rounded-2xl
+                                border border-emerald-400/30
+                                bg-[#0b1623]
+                                p-8 shadow-2xl
+                            "
+                        >
+                            <div className="flex items-start justify-between gap-5">
+                                <div>
+                                    <div
+                                        className="
+                                            mb-4 flex h-14 w-14
+                                            items-center justify-center
+                                            rounded-full
+                                            bg-emerald-500/15
+                                            text-emerald-300
+                                        "
+                                    >
+                                        <Download size={30} />
+                                    </div>
 
-                        Connecter un téléphone
-                    </button>
-                </Section>
+                                    <h2 className="text-2xl font-bold">
+                                        Installer LifeBoard Mobile
+                                    </h2>
+
+                                    <p className="mt-2 text-sm text-slate-400">
+                                        Scanne ce QR code avec le téléphone Android.
+                                    </p>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onPointerUp={(event) => {
+                                        event.stopPropagation();
+                                        setShowMobileInstall(false);
+                                    }}
+                                    onClick={(event) => {
+                                        if (event.detail === 0) {
+                                            setShowMobileInstall(false);
+                                        }
+                                    }}
+                                    className="rounded-lg p-2 active:bg-white/15"
+                                    style={{
+                                        touchAction: "none",
+                                    }}
+                                    aria-label="Fermer"
+                                >
+                                    <X />
+                                </button>
+                            </div>
+
+                            {isLoadingMobileInstall && (
+                                <div className="py-12 text-center">
+                                    <div
+                                        className="
+                                            mx-auto h-10 w-10
+                                            animate-spin rounded-full
+                                            border-4 border-emerald-400
+                                            border-t-transparent
+                                        "
+                                    />
+
+                                    <p className="mt-4 text-slate-400">
+                                        Préparation du téléchargement…
+                                    </p>
+                                </div>
+                            )}
+
+                            {mobileInstallError && (
+                                <div
+                                    className="
+                                        mt-6 rounded-xl
+                                        border border-red-400/30
+                                        bg-red-500/10
+                                        p-4 text-red-300
+                                    "
+                                >
+                                    {mobileInstallError}
+                                </div>
+                            )}
+
+                            {mobileInstallUrl && (
+                                <div className="mt-7 text-center">
+                                    <div
+                                        className="
+                                            inline-flex rounded-2xl
+                                            bg-white p-5
+                                        "
+                                    >
+                                        <QRCodeSVG
+                                            value={mobileInstallUrl}
+                                            size={260}
+                                            level="M"
+                                        />
+                                    </div>
+
+                                    <p className="mt-5 text-sm text-slate-400">
+                                        Le QR code télécharge directement l'APK :
+                                    </p>
+
+                                    <p className="mt-1 break-all font-mono text-sm text-emerald-300">
+                                        {mobileInstallUrl}
+                                    </p>
+
+                                    <div
+                                        className="
+                                            mt-5 rounded-xl
+                                            border border-amber-400/20
+                                            bg-amber-500/10 p-4
+                                        "
+                                    >
+                                        <p className="text-sm leading-relaxed text-amber-200">
+                                            Android peut demander d'autoriser
+                                            l'installation d'applications inconnues
+                                            pour le navigateur utilisé. L'installation
+                                            doit ensuite être confirmée sur le téléphone.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {showMobilePairing && (
                     <div
