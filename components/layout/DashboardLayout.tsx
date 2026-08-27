@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+    useEffect,
+    useRef,
+    useState,
+} from "react";
 
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
@@ -49,11 +53,19 @@ type GenerationStatus = {
     retryAt: string | null;
 };
 
+type MobileInboxItem = {
+    mobileId: string;
+    operation: Operation;
+    receivedAt: string;
+};
+
 export default function DashboardLayout() {
     const [activePage, setActivePage] = useState<Page>("overview");
 
     const [isLoaded, setIsLoaded] = useState(false);
     const [operations, setOperations] = useState<Operation[]>([]);
+    const operationsRef =
+        useRef<Operation[]>([]);
     const [netWorthSnapshots, setNetWorthSnapshots] = useState<
         NetWorthSnapshot[]
     >([]);
@@ -71,6 +83,10 @@ export default function DashboardLayout() {
 
     const { inactiveSeconds, isPresentation, shouldReturnHome } =
         usePresentationMode();
+
+    useEffect(() => {
+        operationsRef.current = operations;
+    }, [operations]);
 
     useEffect(() => {
         async function loadStatus() {
@@ -203,6 +219,46 @@ export default function DashboardLayout() {
     }, [budgets, isLoaded]);
 
     useEffect(() => {
+        if (!isLoaded) {
+            return;
+        }
+
+        const syncMobileConfig = async () => {
+            try {
+                const response = await fetch(
+                    "/api/mobile/config",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json",
+                        },
+
+                        body: JSON.stringify({
+                            budgets,
+                        }),
+                    },
+                );
+
+                if (!response.ok) {
+                    console.error(
+                        "Erreur synchronisation config mobile :",
+                        response.status,
+                    );
+                }
+            } catch (error) {
+                console.error(
+                    "Impossible de mettre à jour la config mobile :",
+                    error,
+                );
+            }
+        };
+
+        void syncMobileConfig();
+    }, [budgets, isLoaded]);
+
+    useEffect(() => {
         if (!isLoaded) return;
         localStorage.setItem("lifeboard_goals", JSON.stringify(goals));
     }, [goals, isLoaded]);
@@ -211,6 +267,177 @@ export default function DashboardLayout() {
         if (!isLoaded) return;
         localStorage.setItem("lifeboard_settings", JSON.stringify(settings));
     }, [settings, isLoaded]);
+
+    useEffect(() => {
+        if (!isLoaded) {
+            return;
+        }
+
+        let isImporting = false;
+
+        async function importMobileOperations() {
+            if (isImporting) {
+                return;
+            }
+
+            isImporting = true;
+
+            try {
+                const response = await fetch(
+                    `/api/mobile/operations?t=${Date.now()}`,
+                    {
+                        method: "GET",
+                        cache: "no-store",
+                    },
+                );
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (
+                    data.success !== true ||
+                    !Array.isArray(data.pending) ||
+                    data.pending.length === 0
+                ) {
+                    return;
+                }
+
+                const pending =
+                    data.pending as MobileInboxItem[];
+
+                const currentOperations =
+                    operationsRef.current;
+
+                const existingIds = new Set(
+                    currentOperations.map(
+                        (operation) => operation.id,
+                    ),
+                );
+
+                /*
+                * Si DELETE avait échoué lors d'un précédent
+                * import, on évite de réimporter deux fois
+                * la même opération.
+                */
+                const newItems = pending.filter(
+                    (item) =>
+                        !existingIds.has(
+                            item.operation.id,
+                        ),
+                );
+
+                let nextOperations =
+                    currentOperations;
+
+                if (newItems.length > 0) {
+                    nextOperations = [
+                        ...newItems.map(
+                            (item) => item.operation,
+                        ),
+                        ...currentOperations,
+                    ];
+
+                    /*
+                    * On persiste AVANT de confirmer
+                    * au serveur que les opérations
+                    * ont été consommées.
+                    */
+                    localStorage.setItem(
+                        "lifeboard_operations",
+                        JSON.stringify(
+                            nextOperations,
+                        ),
+                    );
+
+                    operationsRef.current =
+                        nextOperations;
+
+                    setOperations(
+                        nextOperations,
+                    );
+                }
+
+                /*
+                * À ce stade :
+                * - soit l'opération vient d'être sauvegardée
+                * - soit elle existait déjà localement.
+                *
+                * On peut donc retirer les messages
+                * de la boîte de réception serveur.
+                */
+                const mobileIds = pending.map(
+                    (item) => item.mobileId,
+                );
+
+                const deleteResponse =
+                    await fetch(
+                        "/api/mobile/operations",
+                        {
+                            method: "DELETE",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json",
+                            },
+
+                            body: JSON.stringify({
+                                mobileIds,
+                            }),
+                        },
+                    );
+
+                if (!deleteResponse.ok) {
+                    console.error(
+                        "Impossible de confirmer les opérations mobiles.",
+                    );
+
+                    return;
+                }
+
+                console.log(
+                    `${mobileIds.length} opération(s) mobile(s) importée(s) dans LifeBoard.`,
+                );
+            } catch (error) {
+                console.error(
+                    "Erreur import opérations mobiles :",
+                    error,
+                );
+            } finally {
+                isImporting = false;
+            }
+        }
+
+        /*
+        * Premier contrôle immédiatement.
+        */
+        void importMobileOperations();
+
+        /*
+        * Puis LifeBoard regarde sa boîte de réception.
+        *
+        * ATTENTION :
+        * ça ne déclenche PAS de synchronisation depuis
+        * le téléphone.
+        *
+        * Le téléphone n'envoie toujours les opérations
+        * que lorsque tu appuies sur Synchroniser.
+        */
+        const intervalId =
+            window.setInterval(
+                importMobileOperations,
+                2000,
+            );
+
+        return () => {
+
+            window.clearInterval(
+                intervalId,
+            );
+        };
+    }, [isLoaded]);
 
     function handleAddOperation(operation: Operation) {
         setOperations((current) => [operation, ...current]);

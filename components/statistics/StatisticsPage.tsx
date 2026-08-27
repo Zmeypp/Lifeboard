@@ -77,21 +77,57 @@ export default function StatisticsPage({
         expenses.length > 0 ? Math.round(totalExpenses / expenses.length) : 0;
 
     const expensesCategoryData = useMemo(() => {
-        const expensesByCategory = expenses.reduce<Record<string, number>>(
-            (acc, operation) => {
-                acc[operation.category] =
-                    (acc[operation.category] ?? 0) + Math.abs(operation.amount);
+        const expensesByBudget = new Map<string, number>();
 
-                return acc;
-            },
-            {},
-        );
+        for (const operation of expenses) {
+            for (const [budgetId, impact] of Object.entries(
+                operation.budgetImpact,
+            )) {
+                /*
+                * On vérifie que l'ID correspond réellement
+                * à un budget de dépense existant.
+                */
+                const budget = budgets.find(
+                    (item) =>
+                        item.id === budgetId &&
+                        item.type === "spending",
+                );
 
-        return Object.entries(expensesByCategory).map(([name, value]) => ({
-            name,
-            value,
-        }));
-    }, [expenses]);
+                /*
+                * Si ce n'est pas un vrai budget :
+                * - Sans budget
+                * - ancienne donnée invalide
+                * - clé inconnue
+                *
+                * => ignoré du camembert.
+                */
+                if (!budget) {
+                    continue;
+                }
+
+                const current =
+                    expensesByBudget.get(budget.id) ?? 0;
+
+                expensesByBudget.set(
+                    budget.id,
+                    current + Math.abs(impact),
+                );
+            }
+        }
+
+        return Array.from(
+            expensesByBudget.entries(),
+        ).map(([budgetId, value]) => {
+            const budget = budgets.find(
+                (item) => item.id === budgetId,
+            );
+
+            return {
+                name: budget?.name ?? budgetId,
+                value,
+            };
+        });
+    }, [expenses, budgets]);
 
     const incomeMonthData = useMemo(() => {
         const incomeByMonth = incomes.reduce<Record<string, number>>(
